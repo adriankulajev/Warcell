@@ -7,8 +7,32 @@
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
+  <div id="mainMenu" class="main-menu">
+    <div class="menu-card">
+      <h1>WARCELL</h1>
+      <p>Dynamic border strategy prototype</p>
+
+      <div class="menu-row">
+        <label for="botSlider">
+          Bots: <span id="botCountText">10</span>
+        </label>
+        <input id="botSlider" type="range" min="1" max="20" value="10" />
+      </div>
+
+      <button id="startButton">Start Warmup</button>
+    </div>
+  </div>
+
   <canvas id="game"></canvas>
 
+  <script src="js/config.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/cities.js"></script>
+  <script src="js/units.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/input.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

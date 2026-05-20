@@ -1,0 +1,101 @@
+const MAP_W = 360;
+const MAP_H = 200;
+const TOP_BAR = 44;
+
+const DEFAULT_BOT_COUNT = 10;
+const MAX_BOTS = 20;
+
+const BOT_START_ID = 2;
+
+const WARMUP_SECONDS = 10;
+const AI_SPAWN_MIN_DELAY = 1.5;
+const AI_SPAWN_MAX_DELAY = 9.0;
+const MIN_SPAWN_DISTANCE = 22;
+
+const PLAYER_INITIAL_MONEY = 170;
+
+const WATER = 0;
+const LAND = 1;
+const FOREST = 2;
+const HILL = 3;
+
+const NEUTRAL = 0;
+const RED = 1;
+const BLUE = 2;
+
+const CITY_BUILD_COST = 90;
+const TROOP_COST = 55;
+const TROOP_AMOUNT = 80;
+const MIN_CITY_DISTANCE = 12;
+
+const CITY_CAPTURE_RADIUS = 4.5;
+const CITY_CAPTURE_TIME = 7;
+
+const UNIT_ENGAGE_RANGE = 6;
+const UNIT_DAMAGE = 4.5;
+
+const players = {};
+
+function resetPlayers(botCount) {
+  for (const key of Object.keys(players)) {
+    delete players[key];
+  }
+
+  players[NEUTRAL] = {
+    id: NEUTRAL,
+    name: "Neutral",
+    color: "#9fb85d",
+    dark: "#222",
+    money: 0,
+    isBot: false
+  };
+
+  players[RED] = {
+    id: RED,
+    name: "Redland",
+    color: "#d63434",
+    dark: "#8f1f1f",
+    money: PLAYER_INITIAL_MONEY,
+    isBot: false
+  };
+
+  for (let i = 0; i < botCount; i++) {
+    const id = BOT_START_ID + i;
+    const color = BOT_COLORS[i % BOT_COLORS.length];
+
+    players[id] = {
+      id,
+      name: BOT_NAMES[i % BOT_NAMES.length],
+      color,
+      dark: darkenHex(color, 0.55),
+      money: PLAYER_INITIAL_MONEY,
+      isBot: true
+    };
+  }
+}
+
+const BOT_COLORS = [
+  "#367dff", "#34c759", "#ff9f0a", "#af52de", "#ff375f",
+  "#64d2ff", "#ffd60a", "#bf5af2", "#30d158", "#ff453a",
+  "#0a84ff", "#5e5ce6", "#ff7a00", "#00c7be", "#a2845e",
+  "#ff2d55", "#8e8e93", "#32d74b", "#40c8e0", "#f5c542"
+];
+
+const BOT_NAMES = [
+  "Bluvia", "Grevia", "Orania", "Purpia", "Crimson",
+  "Cyanor", "Goldmark", "Violeta", "Emerald", "Scarlet",
+  "Azure", "Indigo", "Amber", "Tealia", "Bronzia",
+  "Rosehold", "Ironland", "Viridia", "Aquilon", "Sunreach"
+];
+
+function darkenHex(hex, amount) {
+  const n = parseInt(hex.replace("#", ""), 16);
+
+  const r = Math.floor(((n >> 16) & 255) * amount);
+  const g = Math.floor(((n >> 8) & 255) * amount);
+  const b = Math.floor((n & 255) * amount);
+
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+resetPlayers(DEFAULT_BOT_COUNT);
