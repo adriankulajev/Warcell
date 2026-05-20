@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Warcell Prototype</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #0b1620;
+      color: white;
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      image-rendering: pixelated;
+      cursor: crosshair;
+    }
+  </style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const MAP_W = 180;
+const MAP_H = 100;
+const TOP_BAR = 44;
+
+const WATER = 0;
+const LAND = 1;
+const FOREST = 2;
+const HILL = 3;
+
+const NEUTRAL = 0;
+const RED = 1;
+const BLUE = 2;
+
+const UNIT_ENGAGE_RANGE = 6;
+const UNIT_DAMAGE_PER_SECOND = 4.5;
+const CITY_CAPTURE_RADIUS = 4.5;
+const CITY_CAPTURE_TIME = 7.0;
+const CITY_BUILD_COST = 90;
+const TROOP_BUY_COST = 55;
+const TROOP_BUY_AMOUNT = 80;
+const MIN_CITY_DISTANCE = 12;
+
+const countries = {
+  0: { name: "Neutral", color: "#d7d7d7", dark: "#555", money: 0 },
+  1: { name: "Redland", color: "#d63434", dark: "#8f1f1f", money: 170 },
+  2: { name: "Bluvia", color: "#367dff", dark: "#1d4a9f", money: 170 }
+};
+
+const terrain = new Uint8Array(MAP_W * MAP_H);
+const owner = new Uint8Array(MAP_W * MAP_H);
+const control = new Float32Array(MAP_W * MAP_H);
+
+let cellSize = 6;
+let mapOffsetX = 0;
+let mapOffsetY = TOP_BAR;
+let selectedUnit = null;
+let selectedCity = null;
+let mouseCell = { x: 0, y: 0 };
+let day = 1;
+let paused = false;
+let gameStarted = false;
+let buildMode = false;
+let tickTimer = 0;
+let aiTimer = 0;
+let blueRecruitTimer = 0;
+let nextRedCityNumber = 1;
+let nextBlueCityNumber = 1;
+let nextUnitId = 1;
+let message = "Click any land cell to found your first city.";
+
+const cities = [];
+const units = [];
+
+function idx(x, y) {
+  return y * MAP_W + x;
+}
+
+function inBounds(x, y) {
+  return x >= 0 && y >= 0 && x < MAP_W && y < MAP_H;
+}
+
+function resize() {
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.floor(window.innerWidth * dpr);
+  canvas.height = Math.floor(window.innerHeight * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const availableH = window.innerHeight - TOP_BAR;
+  cellSize = Math.floor(Math.min(window.innerWidth / MAP_W, availableH / MAP_H));
+  cellSize = Math.max(4, cellSize);
+  mapOffsetX = Math.floor((window.innerWidth - MAP_W * cellSize) / 2);
+  mapOffsetY = TOP_BAR + Math.floor((availableH - MAP_H * cellSize) / 2);
+}
+
+function generateMap() {
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      const nx = (x - MAP_W / 2) / (MAP_W / 2);
+      const ny = (y - MAP_H / 2) / (MAP_H / 2);
+      const island = nx * nx * 1.05 + ny * ny * 1.55;
+      const wobble = Math.sin(x * 0.11) * 0.12 + Math.cos(y * 0.17) * 0.12 + Math.sin((x + y) * 0.07) * 0.08;
+      const land = island < 0.83 + wobble;
+      const i = idx(x, y);
+
+      if (!land) {
+        terrain[i] = WATER;
+        owner[i] = NEUTRAL;
+        continue;
+      }
+
+      const forestNoise = Math.sin(x * 0.21 + y * 0.05) + Math.cos(y * 0.31);
+      const hillNoise = Math.cos(x * 0.14 - y * 0.18);
+
+      terrain[i] = LAND;
+      if (forestNoise > 1.0) terrain[i] = FOREST;
+      if (hillNoise > 0.82 && y > 45) terrain[i] = HILL;
+
+      owner[i] = NEUTRAL;
+      control[i] = 0;
+    }
+  }
+}
+
+function claimCircle(cx, cy, radius, countryId) {
+  for (let y = cy - radius; y <= cy + radius; y++) {
+    for (let x = cx - radius; x <= cx + radius; x++) {
+      if (!inBounds(x, y)) continue;
+      const i = idx(x, y);
+      if (terrain[i] === WATER) continue;
+      const d = Math.hypot(x - cx, y - cy);
+      if (d <= radius + Math.sin(x * 0.4) * 2) {
+        owner[i] = countryId;
+        control[i] = 0;
+      }
+    }
+  }
+}
+
+function createCity(name, x, y, ownerId, pop = 3000) {
+  const city = {
+    name,
+    x,
+    y,
+    owner: ownerId,
+    pop,
+    capture: 0,
+    captureBy: NEUTRAL
+  };
+  cities.push(city);
+  claimCircle(x, y, 13, ownerId);
+  return city;
+}
+
+function createUnit(ownerId, x, y, soldiers = TROOP_BUY_AMOUNT) {
+  const unit = {
+    id: nextUnitId++,
+    owner: ownerId,
+    x,
+    y,
+    tx: x,
+    ty: y,
+    soldiers,
+    speed: ownerId === BLUE ? 4.8 : 8.0,
+    path: [],
+    pinned: false,
+    selected: false
+  };
+  units.push(unit);
+  return unit;
+}
+
+function foundFirstCity(cell) {
+  if (!canFoundOn(cell.x, cell.y)) {
+    message = "Choose a land cell, not water.";
+    return;
+  }
+
+  const redCapital = createCity("Red Capital", cell.x, cell.y, RED, 5200);
+  const redUnit = createUnit(RED, cell.x + 2, cell.y + 1, 120);
+
+  const blueSpot = findRandomLandSpotFarFrom(cell.x, cell.y, 65);
+  const blueCapital = createCity("Blue Capital", blueSpot.x, blueSpot.y, BLUE, 5200);
+  createUnit(BLUE, blueSpot.x - 2, blueSpot.y + 1, 120);
+  createUnit(BLUE, blueSpot.x + 3, blueSpot.y - 2, 90);
+
+  selectedUnit = redUnit;
+  selectedCity = redCapital;
+  gameStarted = true;
+  message = "First cities founded. Select city and press T to buy troops. Press B to build cities.";
+}
+
+function canFoundOn(x, y) {
+  return inBounds(x, y) && terrain[idx(x, y)] !== WATER;
+}
+
+function findRandomLandSpotFarFrom(x, y, minDistance) {
+  for (let attempts = 0; attempts < 5000; attempts++) {
+    const rx = Math.floor(Math.random() * MAP_W);
+    const ry = Math.floor(Math.random() * MAP_H);
+    if (!canFoundOn(rx, ry)) continue;
+    if (Math.hypot(rx - x, ry - y) < minDistance) continue;
+    return { x: rx, y: ry };
+  }
+  return { x: MAP_W - x - 1, y: MAP_H - y - 1 };
+}
+
+function screenToCell(mx, my) {
+  return {
+    x: Math.floor((mx - mapOffsetX) / cellSize),
+    y: Math.floor((my - mapOffsetY) / cellSize)
+  };
+}
+
+function isBorderCell(x, y) {
+  const i = idx(x, y);
+  if (terrain[i] === WATER) return false;
+  const own = owner[i];
+  const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+  for (const [dx, dy] of dirs) {
+    const nx = x + dx;
+    const ny = y + dy;
+    if (!inBounds(nx, ny)) continue;
+    const ni = idx(nx, ny);
+    if (terrain[ni] !== WATER && owner[ni] !== own) return true;
+  }
+  return false;
+}
+
+function hasNeighborOwner(x, y, countryId) {
+  const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+  for (const [dx, dy] of dirs) {
+    const nx = x + dx;
+    const ny = y + dy;
+    if (!inBounds(nx, ny)) continue;
+    if (owner[idx(nx, ny)] === countryId) return true;
+  }
+  return false;
+}
+
+function terrainDefense(x, y) {
+  if (!inBounds(x, y)) return 1.0;
+  const t = terrain[idx(x, y)];
+  if (t === FOREST) return 1.5;
+  if (t === HILL) return 2.0;
+  return 1.0;
+}
+
+function terrainMoveSpeed(x, y) {
+  if (!inBounds(x, y)) return 1.0;
+  const t = terrain[idx(x, y)];
+  if (t === FOREST) return 0.72;
+  if (t === HILL) return 0.52;
+  return 1.0;
+}
+
+function issueMoveOrder(unit, targetX, targetY) {
+  targetX = Math.floor(targetX);
+  targetY = Math.floor(targetY);
+  if (!inBounds(targetX, targetY)) return false;
+  if (terrain[idx(targetX, targetY)] === WATER) return false;
+
+  const startX = Math.floor(unit.x);
+  const startY = Math.floor(unit.y);
+  const path = findPath(startX, startY, targetX, targetY);
+  if (path.length === 0) {
+    message = "No land path to target.";
+    return false;
+  }
+
+  unit.path = path;
+  unit.tx = targetX;
+  unit.ty = targetY;
+  return true;
+}
+
+function findPath(startX, startY, goalX, goalY) {
+  const start = idx(startX, startY);
+  const goal = idx(goalX, goalY);
+  if (start === goal) return [{ x: goalX, y: goalY }];
+
+  const cameFrom = new Int32Array(MAP_W * MAP_H);
+  cameFrom.fill(-1);
+  const queue = new Int32Array(MAP_W * MAP_H);
+  let head = 0;
+  let tail = 0;
+
+  queue[tail++] = start;
+  cameFrom[start] = start;
+
+  const dirs = [
+    [1, 0], [-1, 0], [0, 1], [0, -1],
+    [1, 1], [1, -1], [-1, 1], [-1, -1]
+  ];
+
+  while (head < tail) {
+    const current = queue[head++];
+    const cx = current % MAP_W;
+    const cy = Math.floor(current / MAP_W);
+
+    for (const [dx, dy] of dirs) {
+      const nx = cx + dx;
+      const ny = cy + dy;
+      if (!inBounds(nx, ny)) continue;
+      const next = idx(nx, ny);
+      if (cameFrom[next] !== -1) continue;
+      if (terrain[next] === WATER) continue;
+
+      cameFrom[next] = current;
+      if (next === goal) {
+        return reconstructPath(cameFrom, start, goal);
+      }
+      queue[tail++] = next;
+    }
+  }
+
+  return [];
+}
+
+function reconstructPath(cameFrom, start, goal) {
+  const reversed = [];
+  let current = goal;
+
+  while (current !== start) {
+    reversed.push({ x: current % MAP_W, y: Math.floor(current / MAP_W) });
+    current = cameFrom[current];
+    if (current < 0) return [];
+  }
+
+  reversed.reverse();
+  return reversed;
+}
+
+function update(dt) {
+  if (!gameStarted || paused) return;
+
+  tickTimer += dt;
+  if (tickTimer >= 0.12) {
+    tickTimer = 0;
+    day++;
+    for (const c of cities) {
+      if (c.owner !== NEUTRAL) countries[c.owner].money += c.pop / 10000;
+    }
+  }
+
+  resolveUnitBattles(dt);
+  captureCities(dt);
+
+  for (const unit of units) {
+    if (unit.soldiers <= 0) continue;
+    moveUnit(unit, dt);
+    captureAroundUnit(unit, dt);
+  }
+
+  removeDeadUnits();
+  verySimpleAI(dt);
+  aiRecruitAndBuild(dt);
+}
+
+function moveUnit(unit, dt) {
+  if (unit.pinned) return;
+  if (!unit.path || unit.path.length === 0) return;
+
+  const nextCell = unit.path[0];
+  const targetX = nextCell.x + 0.5;
+  const targetY = nextCell.y + 0.5;
+
+  const dx = targetX - unit.x;
+  const dy = targetY - unit.y;
+  const dist = Math.hypot(dx, dy);
+
+  if (dist < 0.12) {
+    unit.x = targetX;
+    unit.y = targetY;
+    unit.path.shift();
+    return;
+  }
+
+  const cx = Math.floor(unit.x);
+  const cy = Math.floor(unit.y);
+  const speedMultiplier = terrainMoveSpeed(cx, cy);
+  const speed = unit.speed * speedMultiplier * dt;
+  const step = Math.min(speed, dist);
+  const nx = unit.x + (dx / dist) * step;
+  const ny = unit.y + (dy / dist) * step;
+
+  const nextX = Math.floor(nx);
+  const nextY = Math.floor(ny);
+  if (!inBounds(nextX, nextY) || terrain[idx(nextX, nextY)] === WATER) {
+    unit.path = [];
+    return;
+  }
+
+  unit.x = nx;
+  unit.y = ny;
+}
+
+function captureAroundUnit(unit, dt) {
+  if (unit.pinned) return;
+
+  const ux = Math.floor(unit.x);
+  const uy = Math.floor(unit.y);
+  const radius = 4;
+  const power = unit.soldiers * dt * 0.35;
+
+  for (let y = uy - radius; y <= uy + radius; y++) {
+    for (let x = ux - radius; x <= ux + radius; x++) {
+      if (!inBounds(x, y)) continue;
+      const i = idx(x, y);
+      if (terrain[i] === WATER) continue;
+      if (owner[i] === unit.owner) continue;
+      if (!hasNeighborOwner(x, y, unit.owner)) continue;
+
+      const d = Math.hypot(x - unit.x, y - unit.y);
+      if (d > radius) continue;
+
+      const defense = terrainDefense(x, y) * (owner[i] === NEUTRAL ? 0.8 : 1.8);
+      control[i] += (power / defense) * (1 - d / (radius + 1));
+
+      if (control[i] > 12) {
+        owner[i] = unit.owner;
+        control[i] = 0;
+      }
+    }
+  }
+}
+
+function captureCities(dt) {
+  for (const city of cities) {
+    const nearby = units.filter(u => u.soldiers > 0 && Math.hypot(u.x - city.x, u.y - city.y) <= CITY_CAPTURE_RADIUS);
+    if (nearby.length === 0) {
+      city.capture = Math.max(0, city.capture - dt * 0.75);
+      continue;
+    }
+
+    const sides = [...new Set(nearby.map(u => u.owner))];
+    if (sides.length > 1) {
+      city.capture = Math.max(0, city.capture - dt * 0.4);
+      message = `${city.name} is contested.`;
+      continue;
+    }
+
+    const capturingOwner = sides[0];
+    if (city.owner === capturingOwner) {
+      city.capture = 0;
+      city.captureBy = NEUTRAL;
+      continue;
+    }
+
+    if (city.captureBy !== capturingOwner) {
+      city.captureBy = capturingOwner;
+      city.capture = 0;
+    }
+
+    const strength = nearby.reduce((sum, u) => sum + u.soldiers, 0) / 100;
+    city.capture += dt * Math.max(0.6, strength);
+    message = `${countries[capturingOwner].name} capturing ${city.name}: ${Math.floor((city.capture / CITY_CAPTURE_TIME) * 100)}%`;
+
+    if (city.capture >= CITY_CAPTURE_TIME) {
+      city.owner = capturingOwner;
+      city.capture = 0;
+      city.captureBy = NEUTRAL;
+      claimCircle(city.x, city.y, 9, capturingOwner);
+      message = `${countries[capturingOwner].name} captured ${city.name}.`;
+    }
+  }
+}
+
+function resolveUnitBattles(dt) {
+  for (const unit of units) unit.pinned = false;
+
+  for (let a = 0; a < units.length; a++) {
+    for (let b = a + 1; b < units.length; b++) {
+      const u1 = units[a];
+      const u2 = units[b];
+      if (u1.owner === u2.owner) continue;
+      if (u1.soldiers <= 0 || u2.soldiers <= 0) continue;
+
+      const d = Math.hypot(u1.x - u2.x, u1.y - u2.y);
+      if (d > UNIT_ENGAGE_RANGE) continue;
+
+      u1.pinned = true;
+      u2.pinned = true;
+      u1.tx = u1.x;
+      u1.ty = u1.y;
+      u1.path = [];
+      u2.tx = u2.x;
+      u2.ty = u2.y;
+      u2.path = [];
+
+      const u1Terrain = terrainDefense(Math.floor(u1.x), Math.floor(u1.y));
+      const u2Terrain = terrainDefense(Math.floor(u2.x), Math.floor(u2.y));
+
+      const u1Damage = UNIT_DAMAGE_PER_SECOND * dt * (u1.soldiers / 100) / u2Terrain;
+      const u2Damage = UNIT_DAMAGE_PER_SECOND * dt * (u2.soldiers / 100) / u1Terrain;
+
+      u2.soldiers -= u1Damage;
+      u1.soldiers -= u2Damage;
+    }
+  }
+}
+
+function removeDeadUnits() {
+  for (let i = units.length - 1; i >= 0; i--) {
+    if (units[i].soldiers <= 1) {
+      if (selectedUnit === units[i]) selectedUnit = null;
+      units.splice(i, 1);
+    }
+  }
+}
+
+function verySimpleAI(dt) {
+  aiTimer += dt;
+  if (aiTimer < 5) return;
+  aiTimer = 0;
+
+  const redCities = cities.filter(c => c.owner === RED);
+  if (redCities.length === 0) return;
+
+  for (const unit of units) {
+    if (unit.owner !== BLUE) continue;
+    if (unit.pinned) continue;
+
+    const target = redCities[Math.floor(Math.random() * redCities.length)];
+    issueMoveOrder(unit, target.x + Math.random() * 8 - 4, target.y + Math.random() * 8 - 4);
+  }
+}
+
+function aiRecruitAndBuild(dt) {
+  blueRecruitTimer += dt;
+  if (blueRecruitTimer < 4) return;
+  blueRecruitTimer = 0;
+
+  const blueCities = cities.filter(c => c.owner === BLUE);
+  if (blueCities.length === 0) return;
+
+  if (countries[BLUE].money >= TROOP_BUY_COST) {
+    const c = blueCities[Math.floor(Math.random() * blueCities.length)];
+    countries[BLUE].money -= TROOP_BUY_COST;
+    createUnit(BLUE, c.x + Math.random() * 4 - 2, c.y + Math.random() * 4 - 2, TROOP_BUY_AMOUNT);
+  }
+
+  if (countries[BLUE].money >= CITY_BUILD_COST + 40 && Math.random() < 0.35) {
+    const spot = findOwnedBuildSpot(BLUE);
+    if (spot) {
+      countries[BLUE].money -= CITY_BUILD_COST;
+      const city = createCity(`Blue City ${nextBlueCityNumber++}`, spot.x, spot.y, BLUE, 2400);
+      message = `${city.name} built by Bluvia.`;
+    }
+  }
+}
+
+function findOwnedBuildSpot(countryId) {
+  for (let attempts = 0; attempts < 1000; attempts++) {
+    const x = Math.floor(Math.random() * MAP_W);
+    const y = Math.floor(Math.random() * MAP_H);
+    if (!inBounds(x, y)) continue;
+    const i = idx(x, y);
+    if (terrain[i] === WATER || owner[i] !== countryId) continue;
+    if (tooCloseToCity(x, y)) continue;
+    return { x, y };
+  }
+  return null;
+}
+
+function tryBuildCity(cell) {
+  if (!inBounds(cell.x, cell.y)) return;
+  const i = idx(cell.x, cell.y);
+  if (terrain[i] === WATER) {
+    message = "Cannot build on water.";
+    return;
+  }
+  if (owner[i] !== RED) {
+    message = "Build cities only on your own territory.";
+    return;
+  }
+  if (countries[RED].money < CITY_BUILD_COST) {
+    message = `Not enough money. Need ${CITY_BUILD_COST}.`;
+    return;
+  }
+  if (tooCloseToCity(cell.x, cell.y)) {
+    message = "Too close to another city.";
+    return;
+  }
+
+  countries[RED].money -= CITY_BUILD_COST;
+  const city = createCity(`Red City ${nextRedCityNumber++}`, cell.x, cell.y, RED, 2400);
+  selectedCity = city;
+  selectedUnit = null;
+  message = `${city.name} built for ${CITY_BUILD_COST} money.`;
+}
+
+function tooCloseToCity(x, y) {
+  for (const c of cities) {
+    if (Math.hypot(c.x - x, c.y - y) < MIN_CITY_DISTANCE) return true;
+  }
+  return false;
+}
+
+function buyTroopsAtSelectedCity() {
+  if (!selectedCity || selectedCity.owner !== RED) {
+    message = "Select one of your cities first, then press T.";
+    return;
+  }
+  if (countries[RED].money < TROOP_BUY_COST) {
+    message = `Not enough money. Need ${TROOP_BUY_COST}.`;
+    return;
+  }
+
+  countries[RED].money -= TROOP_BUY_COST;
+  selectedUnit = createUnit(RED, selectedCity.x + 2, selectedCity.y + 1, TROOP_BUY_AMOUNT);
+  message = `Bought ${TROOP_BUY_AMOUNT} troops at ${selectedCity.name} for ${TROOP_BUY_COST}.`;
+}
+
+function nearestCity(cell, maxDist = 4.0) {
+  let best = null;
+  let bestD = maxDist;
+  for (const city of cities) {
+    const d = Math.hypot(city.x - cell.x, city.y - cell.y);
+    if (d < bestD) {
+      bestD = d;
+      best = city;
+    }
+  }
+  return best;
+}
+
+function draw() {
+  ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+  drawTopBar();
+  drawWaterBackground();
+  drawMap();
+  drawCities();
+  drawUnits();
+  drawPanel();
+  if (!gameStarted) drawSpawnOverlay();
+  if (buildMode) drawBuildCursor();
+}
+
+function drawTopBar() {
+  ctx.fillStyle = "#07101a";
+  ctx.fillRect(0, 0, window.innerWidth, TOP_BAR);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 20px Arial";
+  ctx.fillText("WARCELL - tiny prototype", 16, 28);
+
+  ctx.font = "14px Arial";
+  ctx.fillStyle = countries[RED].color;
+  ctx.fillText(`Red money: ${Math.floor(countries[RED].money)}`, 310, 27);
+  ctx.fillStyle = countries[BLUE].color;
+  ctx.fillText(`Blue money: ${Math.floor(countries[BLUE].money)}`, 450, 27);
+
+  ctx.fillStyle = buildMode ? "#ffd34d" : "#dce7f2";
+  ctx.fillText(buildMode ? `BUILD MODE: city ${CITY_BUILD_COST}` : `B: build city ${CITY_BUILD_COST} | T: buy troops ${TROOP_BUY_COST}`, 610, 27);
+
+  ctx.fillStyle = "#dce7f2";
+  ctx.fillText(`Day ${day}`, window.innerWidth - 170, 27);
+  ctx.fillText(paused ? "Paused" : (gameStarted ? "Running" : "Choose land"), window.innerWidth - 95, 27);
+}
+
+function drawWaterBackground() {
+  ctx.fillStyle = "#1f77a8";
+  ctx.fillRect(0, TOP_BAR, window.innerWidth, window.innerHeight - TOP_BAR);
+}
+
+function drawMap() {
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      const i = idx(x, y);
+      const sx = mapOffsetX + x * cellSize;
+      const sy = mapOffsetY + y * cellSize;
+
+      if (terrain[i] === WATER) {
+        ctx.fillStyle = "#2386bd";
+      } else {
+        let base = "#9fb85d";
+        if (terrain[i] === FOREST) base = "#4f883b";
+        if (terrain[i] === HILL) base = "#77786a";
+
+        const own = owner[i];
+        if (own === NEUTRAL) {
+          ctx.fillStyle = base;
+        } else {
+          ctx.fillStyle = blendColor(base, countries[own].color, 0.45);
+        }
+      }
+
+      ctx.fillRect(sx, sy, cellSize, cellSize);
+
+      if (terrain[i] !== WATER && isBorderCell(x, y)) {
+        ctx.fillStyle = owner[i] === NEUTRAL ? "#222" : countries[owner[i]].dark;
+        ctx.fillRect(sx, sy, cellSize, cellSize);
+      }
+    }
+  }
+
+  drawRiversAndRoads();
+}
+
+function drawRiversAndRoads() {
+  ctx.lineCap = "round";
+
+  ctx.strokeStyle = "#45aee8";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  moveToCell(90, 13);
+  curveToCell(82, 35, 94, 46, 88, 62);
+  curveToCell(84, 73, 100, 76, 109, 92);
+  ctx.stroke();
+
+  if (cities.length < 2) return;
+  ctx.strokeStyle = "rgba(60,45,30,0.65)";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([4, 5]);
+  ctx.beginPath();
+  for (let i = 0; i < cities.length - 1; i++) {
+    const a = cities[i];
+    const b = cities[i + 1];
+    if (a.owner !== b.owner) continue;
+    moveToCell(a.x, a.y);
+    lineToCell(b.x, b.y);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function moveToCell(x, y) {
+  ctx.moveTo(mapOffsetX + x * cellSize + cellSize / 2, mapOffsetY + y * cellSize + cellSize / 2);
+}
+function lineToCell(x, y) {
+  ctx.lineTo(mapOffsetX + x * cellSize + cellSize / 2, mapOffsetY + y * cellSize + cellSize / 2);
+}
+function curveToCell(x1, y1, x2, y2, x3, y3) {
+  ctx.bezierCurveTo(
+    mapOffsetX + x1 * cellSize, mapOffsetY + y1 * cellSize,
+    mapOffsetX + x2 * cellSize, mapOffsetY + y2 * cellSize,
+    mapOffsetX + x3 * cellSize, mapOffsetY + y3 * cellSize
+  );
+}
+
+function drawCities() {
+  for (const city of cities) {
+    const sx = mapOffsetX + city.x * cellSize + cellSize / 2;
+    const sy = mapOffsetY + city.y * cellSize + cellSize / 2;
+    const isSelected = selectedCity === city;
+
+    ctx.fillStyle = isSelected ? "#ffffff" : "#111";
+    ctx.beginPath();
+    ctx.arc(sx, sy, isSelected ? 10 : 8, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = city.owner === NEUTRAL ? "#dddddd" : countries[city.owner].color;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (city.capture > 0) {
+      const p = Math.min(1, city.capture / CITY_CAPTURE_TIME);
+      ctx.strokeStyle = countries[city.captureBy].color;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 12, -Math.PI / 2, -Math.PI / 2 + p * Math.PI * 2);
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = "white";
+    ctx.font = "12px Arial";
+    ctx.fillText(city.name, sx + 10, sy + 4);
+  }
+}
+
+function drawUnits() {
+  for (const unit of units) {
+    const sx = mapOffsetX + unit.x * cellSize + cellSize / 2;
+    const sy = mapOffsetY + unit.y * cellSize + cellSize / 2;
+
+    ctx.fillStyle = selectedUnit === unit ? "#ffffff" : "#111111";
+    ctx.beginPath();
+    ctx.arc(sx, sy, unit.pinned ? 12 : 9, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = countries[unit.owner].color;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "white";
+    ctx.font = "10px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText(Math.ceil(unit.soldiers), sx, sy - 12);
+
+    if (unit.pinned) {
+      ctx.fillStyle = "#ffd34d";
+      ctx.font = "10px Arial";
+      ctx.fillText("PINNED", sx, sy + 22);
+    }
+    ctx.textAlign = "left";
+
+    if (unit.path && unit.path.length > 0) {
+      ctx.strokeStyle = "rgba(255,255,255,0.6)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      const previewSteps = Math.min(unit.path.length, 14);
+      for (let p = 0; p < previewSteps; p++) {
+        ctx.lineTo(
+          mapOffsetX + unit.path[p].x * cellSize + cellSize / 2,
+          mapOffsetY + unit.path[p].y * cellSize + cellSize / 2
+        );
+      }
+      ctx.stroke();
+    }
+  }
+}
+
+function drawPanel() {
+  ctx.fillStyle = "rgba(5, 12, 20, 0.84)";
+  ctx.fillRect(16, window.innerHeight - 128, 520, 112);
+
+  ctx.fillStyle = "white";
+  ctx.font = "14px Arial";
+  ctx.fillText("Start: click any land to found first city. AI also founds its own city randomly.", 30, window.innerHeight - 98);
+  ctx.fillText("Left click red city = select city. Press T = buy troops there.", 30, window.innerHeight - 74);
+  ctx.fillText("Left click red unit = select unit. Right click = pathfind move/attack. Stand on enemy city to capture.", 30, window.innerHeight - 50);
+  ctx.fillText("B = build city mode. In build mode, click owned land to build a normal city.", 30, window.innerHeight - 26);
+
+  ctx.fillStyle = "#ffd34d";
+  ctx.fillText(message, 30, window.innerHeight - 6);
+}
+
+function drawSpawnOverlay() {
+  ctx.fillStyle = "rgba(0,0,0,0.35)";
+  ctx.fillRect(0, TOP_BAR, window.innerWidth, window.innerHeight - TOP_BAR);
+
+  ctx.fillStyle = "white";
+  ctx.font = "bold 28px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText("Found your first city", window.innerWidth / 2, TOP_BAR + 52);
+  ctx.font = "16px Arial";
+  ctx.fillText("Click any land spot. There are no premade neutral cities.", window.innerWidth / 2, TOP_BAR + 82);
+  ctx.textAlign = "left";
+}
+
+function drawBuildCursor() {
+  if (!inBounds(mouseCell.x, mouseCell.y)) return;
+  const sx = mapOffsetX + mouseCell.x * cellSize + cellSize / 2;
+  const sy = mapOffsetY + mouseCell.y * cellSize + cellSize / 2;
+
+  ctx.strokeStyle = owner[idx(mouseCell.x, mouseCell.y)] === RED ? "#ffd34d" : "#ff5555";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(sx, sy, MIN_CITY_DISTANCE * cellSize, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+function blendColor(hexA, hexB, amount) {
+  const a = hexToRgb(hexA);
+  const b = hexToRgb(hexB);
+  const r = Math.round(a.r * (1 - amount) + b.r * amount);
+  const g = Math.round(a.g * (1 - amount) + b.g * amount);
+  const bl = Math.round(a.b * (1 - amount) + b.b * amount);
+  return `rgb(${r},${g},${bl})`;
+}
+
+function hexToRgb(hex) {
+  const n = parseInt(hex.replace("#", ""), 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+canvas.addEventListener("mousemove", e => {
+  mouseCell = screenToCell(e.clientX, e.clientY);
+});
+
+canvas.addEventListener("click", e => {
+  const c = screenToCell(e.clientX, e.clientY);
+  if (!inBounds(c.x, c.y)) return;
+
+  if (!gameStarted) {
+    foundFirstCity(c);
+    return;
+  }
+
+  if (buildMode) {
+    tryBuildCity(c);
+    return;
+  }
+
+  selectedUnit = null;
+  selectedCity = null;
+
+  for (const unit of units) {
+    if (unit.owner !== RED) continue;
+    if (Math.hypot(unit.x - c.x, unit.y - c.y) < 3) {
+      selectedUnit = unit;
+      message = `Selected Redland unit with ${Math.ceil(unit.soldiers)} soldiers.`;
+      return;
+    }
+  }
+
+  const city = nearestCity(c, 4);
+  if (city && city.owner === RED) {
+    selectedCity = city;
+    message = `Selected ${city.name}. Press T to buy ${TROOP_BUY_AMOUNT} troops.`;
+    return;
+  }
+});
+
+canvas.addEventListener("contextmenu", e => {
+  e.preventDefault();
+  if (!selectedUnit) return;
+  const c = screenToCell(e.clientX, e.clientY);
+  if (!inBounds(c.x, c.y)) return;
+  if (terrain[idx(c.x, c.y)] === WATER) return;
+  if (issueMoveOrder(selectedUnit, c.x, c.y)) {
+    message = "Path order issued.";
+  }
+});
+
+window.addEventListener("keydown", e => {
+  if (e.code === "Space") paused = !paused;
+  if (e.key.toLowerCase() === "b" && gameStarted) {
+    buildMode = !buildMode;
+    selectedUnit = null;
+    message = buildMode ? `Build mode ON. Click owned land. City cost: ${CITY_BUILD_COST}.` : "Build mode OFF.";
+  }
+  if (e.key.toLowerCase() === "t" && gameStarted) {
+    buyTroopsAtSelectedCity();
+  }
+});
+
+window.addEventListener("resize", resize);
+
+let last = performance.now();
+function loop(now) {
+  const dt = Math.min(0.033, (now - last) / 1000);
+  last = now;
+  update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+resize();
+generateMap();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
