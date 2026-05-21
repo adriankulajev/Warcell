@@ -125,19 +125,6 @@ function updateFPS(rawDt) {
   }
 }
 
-function loop(now) {
-  const rawDt = (now - lastTime) / 1000;
-  const dt = Math.min(0.033, rawDt);
-
-  lastTime = now;
-
-  updateFPS(rawDt);
-  update(dt);
-  draw();
-
-  requestAnimationFrame(loop);
-}
-
 window.addEventListener("resize", resize);
 
 let lastTime = performance.now();
@@ -158,6 +145,10 @@ function loop(now) {
 
   update(dt);
 draw();
+
+if (typeof syncPauseBorder === "function") {
+  syncPauseBorder();
+}
 
 if (typeof syncSpeedControl === "function") {
   syncSpeedControl();

@@ -1,6 +1,13 @@
 const mainMenu = document.getElementById("mainMenu");
 const lobbyMenu = document.getElementById("lobbyMenu");
 
+const pauseMenu = document.getElementById("pauseMenu");
+
+const resumeButton = document.getElementById("resumeButton");
+const restartMatchButton = document.getElementById("restartMatchButton");
+const pauseBackToLobbyButton = document.getElementById("pauseBackToLobbyButton");
+const pauseBackToMainButton = document.getElementById("pauseBackToMainButton");
+
 const singleplayerButton = document.getElementById("singleplayerButton");
 const backToMainButton = document.getElementById("backToMainButton");
 
@@ -20,6 +27,8 @@ const playAgainButton = document.getElementById("playAgainButton");
 const backToLobbyButton = document.getElementById("backToLobbyButton");
 const backToMainFromEndButton = document.getElementById("backToMainFromEndButton");
 
+const pauseBorder = document.getElementById("pauseBorder");
+
 mainMenu.style.display = "flex";
 
 function showEndMenu(title, text) {
@@ -38,7 +47,6 @@ function hideAllMenus() {
   endMenu.classList.add("hidden");
 }
 
-
 function setGameSpeed(speed) {
   gameSpeed = speed;
   speedButton.textContent = `x${gameSpeed} ▾`;
@@ -55,6 +63,56 @@ function syncSpeedControl() {
   }
 
   speedButton.textContent = `x${gameSpeed} ▾`;
+}
+
+function showPauseMenu() {
+  if (phase !== "playing") return;
+
+  pauseMenuOpen = true;
+  paused = true;
+
+  pauseMenu.classList.remove("hidden");
+
+  if (typeof speedMenu !== "undefined") {
+    speedMenu.classList.add("hidden");
+  }
+}
+
+function hidePauseMenu() {
+  pauseMenuOpen = false;
+  paused = false;
+
+  pauseMenu.classList.add("hidden");
+}
+
+function returnToLobby() {
+  pauseMenu.classList.add("hidden");
+  endMenu.classList.add("hidden");
+  mainMenu.classList.add("hidden");
+  lobbyMenu.classList.remove("hidden");
+
+  pauseMenuOpen = false;
+  paused = true;
+  phase = "menu";
+}
+
+function returnToMainMenu() {
+  pauseMenu.classList.add("hidden");
+  endMenu.classList.add("hidden");
+  lobbyMenu.classList.add("hidden");
+  mainMenu.classList.remove("hidden");
+
+  pauseMenuOpen = false;
+  paused = true;
+  phase = "menu";
+}
+
+function syncPauseBorder() {
+  if (phase === "playing" && paused) {
+    pauseBorder.classList.add("active");
+  } else {
+    pauseBorder.classList.remove("active");
+  }
 }
 
 speedButton.addEventListener("click", e => {
@@ -163,9 +221,25 @@ canvas.addEventListener("contextmenu", e => {
 window.addEventListener("keydown", e => {
   const key = e.key.toLowerCase();
 
-  if (e.code === "Space") {
-    paused = !paused;
+  if (e.code === "Space" && phase === "playing") {
+  paused = !paused;
+  pauseMenuOpen = false;
+  pauseMenu.classList.add("hidden");
+}
+
+if (e.code === "Escape") {
+  if (phase === "playing") {
+    if (pauseMenuOpen) {
+      hidePauseMenu();
+    } else {
+      showPauseMenu();
+    }
   }
+
+  if (phase === "warmup") {
+    returnToLobby();
+  }
+}
 
   if (key === "b" && gameStarted) {
     buildMode = !buildMode;
@@ -201,4 +275,23 @@ backToMainFromEndButton.addEventListener("click", () => {
   endMenu.classList.add("hidden");
   mainMenu.classList.remove("hidden");
   phase = "menu";
+});
+
+resumeButton.addEventListener("click", () => {
+  hidePauseMenu();
+});
+
+restartMatchButton.addEventListener("click", () => {
+  pauseMenu.classList.add("hidden");
+  pauseMenuOpen = false;
+
+  startWarmup(botCountSetting, warmupSetting);
+});
+
+pauseBackToLobbyButton.addEventListener("click", () => {
+  returnToLobby();
+});
+
+pauseBackToMainButton.addEventListener("click", () => {
+  returnToMainMenu();
 });

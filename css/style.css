@@ -172,3 +172,30 @@ canvas {
   float: right;
   color: #8fa3b8;
 }
+
+.pause-border {
+  position: fixed;
+
+  top: 44px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+
+  z-index: 90;
+  pointer-events: none;
+
+  border: 4px solid rgba(255, 35, 55, 0.9);
+
+  box-shadow:
+    inset 0 0 22px rgba(255, 35, 55, 0.65),
+    inset 0 8px 18px rgba(255, 35, 55, 0.75);
+
+  opacity: 0;
+
+  transition:
+    opacity 0.22s ease-out;
+}
+
+.pause-border.active {
+  opacity: 1;
+}
