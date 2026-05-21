@@ -26,6 +26,14 @@ function hexToRgb(hex) {
   };
 }
 
+function formatTime(seconds) {
+  const total = Math.floor(seconds);
+  const minutes = Math.floor(total / 60);
+  const secs = total % 60;
+
+  return `${minutes}:${secs.toString().padStart(2, "0")}`;
+}
+
 function drawTopBar() {
   ctx.fillStyle = "#07101a";
   ctx.fillRect(0, 0, window.innerWidth, TOP_BAR);
@@ -40,30 +48,28 @@ function drawTopBar() {
   ctx.fillText(`Red money: ${Math.floor(players[RED].money)}`, 160, 27);
 
   const aliveBots = botIds.filter(id =>
-  cities.some(c => c.owner === id)
-).length;
-
-ctx.fillStyle = "#dce7f2";
-ctx.fillText(`Bots alive: ${aliveBots}/${botCountSetting}`, 310, 27);
-
-  ctx.fillStyle = buildMode ? "#ffd34d" : "#dce7f2";
-  ctx.fillText(
-    buildMode ? `BUILD MODE: city ${CITY_BUILD_COST}` : "B: build city | T: buy troops",
-    470,
-    27
-  );
+    cities.some(c => c.owner === id) || units.some(u => u.owner === id)
+  ).length;
 
   ctx.fillStyle = "#dce7f2";
-ctx.fillText(`Day ${day}`, window.innerWidth - 170, 27);
+  ctx.fillText(`Bots alive: ${aliveBots}/${botCountSetting}`, 310, 27);
 
-ctx.fillStyle = fps < 30 ? "#ff5555" : fps < 50 ? "#ffd34d" : "#7CFF7C";
-ctx.fillText(`FPS: ${fps}`, window.innerWidth - 260, 27);
+  ctx.fillStyle = buildMode ? "#ffd34d" : "#dce7f2";
+  ctx.fillText("B: build city | T: buy troops", 470, 27);
 
-  ctx.fillText(
-    paused ? "Paused" : gameStarted ? "Running" : "Choose land",
-    window.innerWidth - 95,
-    27
-  );
+  ctx.fillStyle = fps < 30 ? "#ff5555" : fps < 50 ? "#ffd34d" : "#7CFF7C";
+  ctx.fillText(`FPS: ${fps}`, window.innerWidth - 420, 27);
+
+  ctx.fillStyle = "#dce7f2";
+  ctx.fillText(`Time ${formatTime(gameTime)}`, window.innerWidth - 320, 27);
+
+  let statusText = "Menu";
+
+  if (phase === "warmup") statusText = "Choose land";
+  if (phase === "playing") statusText = paused ? "Paused" : "Running";
+
+  ctx.fillStyle = paused ? "#7CFF7C" : "#dce7f2";
+  ctx.fillText(statusText, window.innerWidth - 80, 27);
 }
 
 function updateTerrainCache() {
@@ -301,50 +307,65 @@ function drawPanel() {
   ctx.fillText(message, 30, window.innerHeight - 5);
 }
 
-function getLeaderboardRows() {
-  const land = {};
+function updateLeaderboardRows() {
+  const landCounts = {};
 
-  for (const id of Object.keys(players)) {
-    land[id] = 0;
+  for (const idText of Object.keys(players)) {
+    landCounts[Number(idText)] = 0;
   }
 
   for (let i = 0; i < owner.length; i++) {
     const id = owner[i];
-    if (land[id] !== undefined) land[id]++;
+
+    if (id === NEUTRAL) continue;
+    if (landCounts[id] === undefined) continue;
+
+    landCounts[id]++;
   }
 
   const rows = [];
 
   for (const idText of Object.keys(players)) {
     const id = Number(idText);
+
     if (id === NEUTRAL) continue;
 
     const cityCount = cities.filter(c => c.owner === id).length;
     const unitCount = units.filter(u => u.owner === id).length;
 
+    const soldierCount = units
+      .filter(u => u.owner === id)
+      .reduce((sum, u) => sum + u.soldiers, 0);
+
+    const land = landCounts[id] || 0;
+    const landPercent = totalLandCells > 0
+      ? (land / totalLandCells) * 100
+      : 0;
+
     rows.push({
       id,
       name: players[id].name,
       color: players[id].color,
-      land: land[id] || 0,
+      land,
+      landPercent,
       cities: cityCount,
       units: unitCount,
-      score: (land[id] || 0) + cityCount * 120 + unitCount * 30
+      soldiers: soldierCount
     });
   }
 
-  rows.sort((a, b) => b.score - a.score);
+  rows.sort((a, b) => b.landPercent - a.landPercent);
 
-  return rows;
+  leaderboardRows = rows;
 }
 
 function drawLeaderboard() {
   if (phase !== "playing") return;
 
-  const rows = getLeaderboardRows().slice(0, 10);
+  const rows = leaderboardRows.slice(0, 10);
 
-  const w = 230;
-  const h = 30 + rows.length * 22;
+  const w = 270;
+  const h = 34 + rows.length * 24;
   const x = window.innerWidth - w - 16;
   const y = TOP_BAR + 16;
 
@@ -359,7 +380,7 @@ function drawLeaderboard() {
 
   for (let i = 0; i < rows.length; i++) {
     const r = rows[i];
-    const yy = y + 44 + i * 22;
+    const yy = y + 46 + i * 24;
 
     ctx.fillStyle = r.color;
     ctx.fillRect(x + 12, yy - 10, 10, 10);
@@ -367,8 +388,11 @@ function drawLeaderboard() {
     ctx.fillStyle = "white";
     ctx.fillText(`${i + 1}. ${r.name}`, x + 28, yy);
 
-    ctx.fillStyle = "#b7c8d8";
-    ctx.fillText(`${r.cities}c ${r.units}u`, x + 160, yy);
+    ctx.fillStyle = "#dce7f2";
+    ctx.fillText(`${r.landPercent.toFixed(1)}%`, x + 145, yy);
+
+    ctx.fillStyle = "#9fb3c8";
+    ctx.fillText(`${r.cities}c ${r.units}u`, x + 205, yy);
   }
 }
 

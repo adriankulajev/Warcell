@@ -2,6 +2,8 @@ const MAP_W = 360;
 const MAP_H = 200;
 const TOP_BAR = 44;
 
+const SPEED_OPTIONS = [0.5, 1, 2, 4];
+
 const DEFAULT_BOT_COUNT = 10;
 const MAX_BOTS = 20;
 

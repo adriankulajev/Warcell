@@ -8,22 +8,63 @@
 </head>
 <body>
   <div id="mainMenu" class="main-menu">
-    <div class="menu-card">
-      <h1>WARCELL</h1>
-      <p>Dynamic border strategy prototype</p>
+  <div class="menu-card">
+    <h1>WARCELL</h1>
+    <p>Dynamic border strategy prototype</p>
 
-      <div class="menu-row">
-        <label for="botSlider">
-          Bots: <span id="botCountText">10</span>
-        </label>
-        <input id="botSlider" type="range" min="1" max="20" value="10" />
-      </div>
-
-      <button id="startButton">Start Warmup</button>
-    </div>
+    <button id="singleplayerButton">Singleplayer</button>
+    <button class="secondary-button" disabled>Multiplayer — later</button>
+    <button class="secondary-button" disabled>Settings — later</button>
   </div>
+</div>
+
+<div id="lobbyMenu" class="main-menu hidden">
+  <div class="menu-card">
+    <h1>LOBBY</h1>
+    <p>Singleplayer setup</p>
+
+    <div class="menu-row">
+      <label for="botSlider">
+        Bots: <span id="botCountText">10</span>
+      </label>
+      <input id="botSlider" type="range" min="1" max="20" value="10" />
+    </div>
+
+    <div class="menu-row">
+      <label for="warmupSlider">
+        Warmup: <span id="warmupText">10</span>s
+      </label>
+      <input id="warmupSlider" type="range" min="5" max="30" value="10" />
+    </div>
+
+    <button id="startButton">Start Warmup</button>
+    <button id="backToMainButton" class="secondary-button">Back</button>
+  </div>
+</div>
+
+<div id="endMenu" class="main-menu hidden">
+  <div class="menu-card">
+    <h1 id="endTitle">MATCH ENDED</h1>
+    <p id="endMessage">Result message</p>
+
+    <button id="playAgainButton">Play Again</button>
+    <button id="backToLobbyButton" class="secondary-button">Back to Lobby</button>
+    <button id="backToMainFromEndButton" class="secondary-button">Main Menu</button>
+  </div>
+</div>
 
   <canvas id="game"></canvas>
+
+  <div id="speedControl" class="speed-control hidden">
+  <button id="speedButton">x1 ▾</button>
+
+  <div id="speedMenu" class="speed-menu hidden">
+    <button data-speed="0.5">x0.5 <span>1</span></button>
+    <button data-speed="1">x1 <span>2</span></button>
+    <button data-speed="2">x2 <span>3</span></button>
+    <button data-speed="4">x4 <span>4</span></button>
+  </div>
+</div>
 
   <script src="js/config.js"></script>
   <script src="js/state.js"></script>

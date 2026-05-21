@@ -27,6 +27,11 @@ let cellSize = 6;
 let offsetX = 0;
 let offsetY = TOP_BAR;
 
+let totalLandCells = 0;
+
+let leaderboardRows = [];
+let leaderboardUpdateTimer = 0;
+
 let gameStarted = false;
 let paused = false;
 let buildMode = false;
@@ -34,6 +39,7 @@ let buildMode = false;
 let botCountSetting = DEFAULT_BOT_COUNT;
 let botIds = [];
 
+let warmupSetting = WARMUP_SECONDS;
 let warmupTime = WARMUP_SECONDS;
 
 let redSpawn = null;
@@ -44,14 +50,19 @@ let selectedUnit = null;
 let selectedCity = null;
 let mouseCell = { x: 0, y: 0 };
 
-let day = 1;
-let tickTimer = 0;
+let gameTime = 0; // seconds since war started
+let gameSpeed = 1;
+
+let resourceTickTimer = 0;
 let aiOrderTimer = 0;
 let aiEcoTimer = 0;
 
 let nextUnitId = 1;
 let nextRedCity = 1;
 let nextBotCity = 1;
+
+let endResultTitle = "";
+let endResultMessage = "";
 
 let message = "Main menu.";
 

@@ -20,25 +20,50 @@ function resize() {
 }
 
 function checkWinLoss() {
-  if (!gameStarted) return;
+  if (phase !== "playing") return;
 
   const redCities = cities.filter(c => c.owner === RED).length;
-  const blueCities = cities.filter(c => c.owner === BLUE).length;
+  const redUnits = units.filter(u => u.owner === RED).length;
 
-  if (redCities === 0) {
+  const aliveBots = botIds.filter(id => {
+    const hasCities = cities.some(c => c.owner === id);
+    const hasUnits = units.some(u => u.owner === id && u.soldiers > 1);
+
+    return hasCities || hasUnits;
+  });
+
+  if (redCities === 0 && redUnits === 0) {
     paused = true;
-    message = "You lost. Blue captured all your cities.";
+    phase = "ended";
+
+    message = "You lost. All your cities and units are gone.";
+
+    if (typeof showEndMenu === "function") {
+      showEndMenu("DEFEAT", "All your cities and units were destroyed.");
+    }
+
+    return;
   }
 
-  if (blueCities === 0) {
+  if (aliveBots.length === 0) {
     paused = true;
-    message = "You won. Blue has no cities left.";
+    phase = "ended";
+
+    message = "You won. All bots are eliminated.";
+
+    if (typeof showEndMenu === "function") {
+      showEndMenu("VICTORY", "All enemy bots were eliminated.");
+    }
+
+    return;
   }
 }
 
 function update(dt) {
   if (phase === "menu") return;
+  if (phase === "ended") return;
 
+  // Warmup eina realiu laiku, ne pagal speed
   if (phase === "warmup") {
     warmupTime -= dt;
 
@@ -53,11 +78,15 @@ function update(dt) {
 
   if (paused) return;
 
-  tickTimer += dt;
+  // Nuo čia viskas vyksta pagal speed
+  const simDt = dt * gameSpeed;
 
-  if (tickTimer >= 0.12) {
-    tickTimer = 0;
-    day++;
+  gameTime += simDt;
+  resourceTickTimer += simDt;
+
+  // Ekonomikos tick kas 1 žaidimo sekundę
+  if (resourceTickTimer >= 1) {
+    resourceTickTimer = 0;
 
     for (const city of cities) {
       if (city.owner !== NEUTRAL) {
@@ -66,17 +95,23 @@ function update(dt) {
     }
   }
 
-  resolveBattles(dt);
-  captureCities(dt);
+  resolveBattles(simDt);
+  captureCities(simDt);
 
   for (const unit of units) {
-    moveUnit(unit, dt);
-    captureAroundUnit(unit, dt);
+    moveUnit(unit, simDt);
+    captureAroundUnit(unit, simDt);
   }
 
   removeDeadUnits();
-  updateAI(dt);
+  updateAI(simDt);
   checkWinLoss();
+  leaderboardUpdateTimer += simDt;
+
+if (leaderboardUpdateTimer >= 0.5) {
+  leaderboardUpdateTimer = 0;
+  updateLeaderboardRows();
+}
 }
 
 function updateFPS(rawDt) {
@@ -103,10 +138,6 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 
-resize();
-generateMap();
-requestAnimationFrame(loop);
-
 window.addEventListener("resize", resize);
 
 let lastTime = performance.now();
@@ -126,14 +157,14 @@ function loop(now) {
   }
 
   update(dt);
-  draw();
+draw();
+
+if (typeof syncSpeedControl === "function") {
+  syncSpeedControl();
+}
 
   requestAnimationFrame(loop);
 }
-
-resize();
-generateMap();
-requestAnimationFrame(loop);
 
 resize();
 generateMap();

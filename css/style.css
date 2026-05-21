@@ -93,3 +93,82 @@ canvas {
 .menu-card button:hover {
   background: #f04444;
 }
+
+.hidden {
+  display: none !important;
+}
+
+.secondary-button {
+  margin-top: 10px;
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #dce7f2 !important;
+}
+
+.secondary-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18) !important;
+}
+
+.secondary-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.speed-control {
+  position: fixed;
+  top: 7px;
+  right: 150px;
+  z-index: 100;
+  font-family: Arial, sans-serif;
+}
+
+#speedButton {
+  min-width: 70px;
+  padding: 5px 10px;
+
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+
+  background: rgba(5, 12, 20, 0.92);
+  color: #ffd34d;
+
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.speed-menu {
+  position: absolute;
+  top: 34px;
+  right: 0;
+
+  width: 120px;
+  padding: 6px;
+
+  border-radius: 10px;
+  background: rgba(5, 12, 20, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+
+.speed-menu button {
+  width: 100%;
+  padding: 8px 10px;
+  margin-bottom: 4px;
+
+  border: 0;
+  border-radius: 7px;
+
+  background: transparent;
+  color: white;
+
+  text-align: left;
+  cursor: pointer;
+}
+
+.speed-menu button:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.speed-menu span {
+  float: right;
+  color: #8fa3b8;
+}

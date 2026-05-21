@@ -11,6 +11,8 @@ function isLand(x, y) {
 }
 
 function generateMap() {
+  totalLandCells = 0;
+
   for (let y = 0; y < MAP_H; y++) {
     for (let x = 0; x < MAP_W; x++) {
       const nx = (x - MAP_W / 2) / (MAP_W / 2);
@@ -31,6 +33,7 @@ function generateMap() {
       }
 
       terrain[i] = LAND;
+      totalLandCells++;
 
       const forestNoise = Math.sin(x * 0.21 + y * 0.05) + Math.cos(y * 0.31);
       const hillNoise = Math.cos(x * 0.14 - y * 0.18);
@@ -42,6 +45,7 @@ function generateMap() {
       control[i] = 0;
     }
   }
+
   terrainDirty = true;
   ownershipDirty = true;
 }

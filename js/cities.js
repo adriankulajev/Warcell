@@ -14,7 +14,8 @@ function createCity(name, x, y, playerId, population = 3000) {
 
   return city;
 }
-function startWarmup(botCount) {
+
+function startWarmup(botCount, warmupSeconds = WARMUP_SECONDS) {
   botCountSetting = Math.max(1, Math.min(MAX_BOTS, botCount));
 
   resetPlayers(botCountSetting);
@@ -30,8 +31,9 @@ function startWarmup(botCount) {
   selectedCity = null;
   selectedUnit = null;
 
-  day = 1;
-  tickTimer = 0;
+gameTime = 0;
+gameSpeed = 1;
+resourceTickTimer = 0;
   aiOrderTimer = 0;
   aiEcoTimer = 0;
 
@@ -47,10 +49,15 @@ function startWarmup(botCount) {
     delay: AI_SPAWN_MIN_DELAY + Math.random() * (AI_SPAWN_MAX_DELAY - AI_SPAWN_MIN_DELAY)
   }));
 
-  warmupTime = WARMUP_SECONDS;
+  warmupSetting = warmupSeconds;
+warmupTime = warmupSetting;
+
   phase = "warmup";
   gameStarted = false;
   paused = false;
+  endResultTitle = "";
+endResultMessage = "";
+
   buildMode = false;
 
   generateMap();
@@ -76,7 +83,6 @@ function chooseRedSpawn(x, y) {
   redSpawn = { x, y, owner: RED };
   message = "Spawn selected. You can change it before warmup ends.";
 }
-
 
 function tryChooseBotSpawns(dt) {
   if (!redSpawn) return;
@@ -173,8 +179,9 @@ function finishWarmup() {
 
   gameStarted = true;
   phase = "playing";
-
+updateLeaderboardRows();
   message = "War started.";
+  
 }
 
 function findRandomLandSpot() {
