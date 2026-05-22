@@ -107,13 +107,30 @@ function setCellOwner(i, newOwner, cityId = 0) {
 
   if (oldOwner === newOwner) {
     if (cityId) cellCity[i] = cityId;
+
+    if (previousOwner[i] === newOwner) {
+      previousOwner[i] = NEUTRAL;
+      occupation[i] = 0;
+      ownershipDirty = true;
+    }
+
     return;
   }
 
-  if (oldOwner !== NEUTRAL && newOwner !== NEUTRAL) {
+  // Liberation: the original owner recaptures occupied land
+  if (previousOwner[i] === newOwner) {
+    previousOwner[i] = NEUTRAL;
+    occupation[i] = 0;
+  }
+
+  // Enemy land capture: occupied territory
+  else if (oldOwner !== NEUTRAL && newOwner !== NEUTRAL) {
     previousOwner[i] = oldOwner;
     occupation[i] = 1;
-  } else {
+  }
+
+  // Neutral capture or becoming neutral: no occupation
+  else {
     previousOwner[i] = NEUTRAL;
     occupation[i] = 0;
   }
@@ -125,7 +142,11 @@ function setCellOwner(i, newOwner, cityId = 0) {
   if (cityId) {
     cellCity[i] = cityId;
   } else {
-    cellCity[i] = findNearestCityIdForOwner(i % MAP_W, Math.floor(i / MAP_W), newOwner);
+    cellCity[i] = findNearestCityIdForOwner(
+      i % MAP_W,
+      Math.floor(i / MAP_W),
+      newOwner
+    );
   }
 
   ownershipDirty = true;

@@ -126,6 +126,7 @@ for (let y = 0; y < MAP_H; y++) {
     if (owner[i] === NEUTRAL) continue;
     if (occupation[i] <= 0) continue;
     if (previousOwner[i] === NEUTRAL) continue;
+    if (previousOwner[i] === owner[i]) continue;
 
     ownershipCtx.fillRect(x, y, 1, 1);
   }
