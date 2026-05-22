@@ -4,7 +4,7 @@ Minimalistic dynamic-border RTS prototype built with HTML Canvas and JavaScript.
 
 ## Version
 
-Current private prototype: **v0.0.1**
+Current prototype: **v0.0.1**
 
 ## Links
 
