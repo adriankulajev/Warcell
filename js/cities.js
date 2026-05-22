@@ -16,52 +16,9 @@ function createCity(name, x, y, playerId, population = 3000) {
 }
 
 function startWarmup(botCount, warmupSeconds = WARMUP_SECONDS) {
-  botCountSetting = Math.max(1, Math.min(MAX_BOTS, botCount));
-
-  resetPlayers(botCountSetting);
-
-  botIds = [];
-  for (let i = 0; i < botCountSetting; i++) {
-    botIds.push(BOT_START_ID + i);
-  }
-
-  cities = [];
-  units = [];
-
-  selectedCity = null;
-  selectedUnit = null;
-
-gameTime = 0;
-gameSpeed = 1;
-resourceTickTimer = 0;
-  aiOrderTimer = 0;
-  aiEcoTimer = 0;
-
-  nextUnitId = 1;
-  nextRedCity = 1;
-  nextBotCity = 1;
-
-  redSpawn = null;
-  botSpawns = [];
-  botSpawnPlans = botIds.map(id => ({
-    owner: id,
-    chosen: false,
-    delay: AI_SPAWN_MIN_DELAY + Math.random() * (AI_SPAWN_MAX_DELAY - AI_SPAWN_MIN_DELAY)
-  }));
-
-  warmupSetting = warmupSeconds;
-warmupTime = warmupSetting;
+  resetGameState(botCount, warmupSeconds);
 
   phase = "warmup";
-  gameStarted = false;
-  paused = false;
-  endResultTitle = "";
-endResultMessage = "";
-
-  buildMode = false;
-
-  generateMap();
-
   message = `Warmup started. Choose your spawn. Bots: ${botCountSetting}.`;
 }
 

@@ -28,6 +28,7 @@ const backToLobbyButton = document.getElementById("backToLobbyButton");
 const backToMainFromEndButton = document.getElementById("backToMainFromEndButton");
 
 const pauseBorder = document.getElementById("pauseBorder");
+const endStats = document.getElementById("endStats");
 
 mainMenu.style.display = "flex";
 
@@ -38,6 +39,11 @@ function showEndMenu(title, text) {
   endTitle.textContent = title;
   endMessage.textContent = text;
 
+  renderEndStats();
+
+  pauseMenuOpen = false;
+  paused = true;
+
   endMenu.classList.remove("hidden");
 }
 
@@ -45,6 +51,7 @@ function hideAllMenus() {
   mainMenu.classList.add("hidden");
   lobbyMenu.classList.add("hidden");
   endMenu.classList.add("hidden");
+  pauseMenu.classList.add("hidden");
 }
 
 function setGameSpeed(speed) {
@@ -86,25 +93,27 @@ function hidePauseMenu() {
 }
 
 function returnToLobby() {
-  pauseMenu.classList.add("hidden");
-  endMenu.classList.add("hidden");
-  mainMenu.classList.add("hidden");
+  hideAllMenus();
+
   lobbyMenu.classList.remove("hidden");
 
-  pauseMenuOpen = false;
-  paused = true;
+  resetGameState(botCountSetting, warmupSetting);
+
   phase = "menu";
+  paused = true;
+  message = "Lobby.";
 }
 
 function returnToMainMenu() {
-  pauseMenu.classList.add("hidden");
-  endMenu.classList.add("hidden");
-  lobbyMenu.classList.add("hidden");
+  hideAllMenus();
+
   mainMenu.classList.remove("hidden");
 
-  pauseMenuOpen = false;
-  paused = true;
+  resetGameState(botCountSetting, warmupSetting);
+
   phase = "menu";
+  paused = true;
+  message = "Main menu.";
 }
 
 function syncPauseBorder() {
@@ -113,6 +122,79 @@ function syncPauseBorder() {
   } else {
     pauseBorder.classList.remove("active");
   }
+}
+
+function getPlayerEndStats() {
+  updateLeaderboardRows();
+
+  const playerRow = leaderboardRows.find(row => row.id === RED);
+  const playerRank = leaderboardRows.findIndex(row => row.id === RED) + 1;
+
+  const redCities = cities.filter(c => c.owner === RED).length;
+  const redUnits = units.filter(u => u.owner === RED).length;
+
+  const redSoldiers = units
+    .filter(u => u.owner === RED)
+    .reduce((sum, u) => sum + u.soldiers, 0);
+
+  const aliveBots = botIds.filter(id => {
+    const hasCities = cities.some(c => c.owner === id);
+    const hasUnits = units.some(u => u.owner === id && u.soldiers > 1);
+    return hasCities || hasUnits;
+  }).length;
+
+  return {
+    time: formatTime(gameTime),
+    landPercent: playerRow ? playerRow.landPercent.toFixed(1) : "0.0",
+    rank: playerRank > 0 ? playerRank : "-",
+    totalPlayers: leaderboardRows.length,
+    cities: redCities,
+    units: redUnits,
+    soldiers: Math.round(redSoldiers),
+    botsAlive: aliveBots,
+    botsTotal: botCountSetting
+  };
+}
+
+function renderEndStats() {
+  const stats = getPlayerEndStats();
+
+  endStats.innerHTML = `
+    <div class="end-stats-row">
+      <span class="end-stats-label">Match time</span>
+      <span class="end-stats-value">${stats.time}</span>
+    </div>
+
+    <div class="end-stats-row">
+      <span class="end-stats-label">Your land</span>
+      <span class="end-stats-value">${stats.landPercent}%</span>
+    </div>
+
+    <div class="end-stats-row">
+      <span class="end-stats-label">Rank</span>
+      <span class="end-stats-value">#${stats.rank} / ${stats.totalPlayers}</span>
+    </div>
+
+    <div class="end-stats-row">
+      <span class="end-stats-label">Cities</span>
+      <span class="end-stats-value">${stats.cities}</span>
+    </div>
+
+    <div class="end-stats-row">
+      <span class="end-stats-label">Units</span>
+      <span class="end-stats-value">${stats.units}</span>
+    </div>
+
+    <div class="end-stats-row">
+      <span class="end-stats-label">Soldiers</span>
+      <span class="end-stats-value">${stats.soldiers}</span>
+    </div>
+
+    <div class="end-stats-row">
+      <span class="end-stats-label">Bots alive</span>
+      <span class="end-stats-value">${stats.botsAlive} / ${stats.botsTotal}</span>
+    </div>
+  `;
 }
 
 speedButton.addEventListener("click", e => {
@@ -282,9 +364,7 @@ resumeButton.addEventListener("click", () => {
 });
 
 restartMatchButton.addEventListener("click", () => {
-  pauseMenu.classList.add("hidden");
-  pauseMenuOpen = false;
-
+  hideAllMenus();
   startWarmup(botCountSetting, warmupSetting);
 });
 

@@ -199,3 +199,36 @@ canvas {
 .pause-border.active {
   opacity: 1;
 }
+
+.end-stats {
+  margin: 18px 0 24px;
+  padding: 14px;
+
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+
+  text-align: left;
+  font-size: 14px;
+}
+
+.end-stats-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.end-stats-row:last-child {
+  border-bottom: 0;
+}
+
+.end-stats-label {
+  color: #9fb3c8;
+}
+
+.end-stats-value {
+  color: white;
+  font-weight: bold;
+}
