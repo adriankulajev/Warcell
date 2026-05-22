@@ -23,33 +23,29 @@ function checkWinLoss() {
   if (phase !== "playing") return;
 
   const redCities = cities.filter(c => c.owner === RED).length;
-  const redUnits = units.filter(u => u.owner === RED).length;
 
-  const aliveBots = botIds.filter(id => {
-    const hasCities = cities.some(c => c.owner === id);
-    const hasUnits = units.some(u => u.owner === id && u.soldiers > 1);
-
-    return hasCities || hasUnits;
-  });
-
-  if (redCities === 0 && redUnits === 0) {
+  if (redCities === 0) {
     paused = true;
     phase = "ended";
 
-    message = "You lost. All your cities and units are gone.";
+    message = "You lost. All your cities were captured.";
 
     if (typeof showEndMenu === "function") {
-      showEndMenu("DEFEAT", "All your cities and units were destroyed.");
+      showEndMenu("DEFEAT", "All your cities were captured.");
     }
 
     return;
   }
 
+  const aliveBots = botIds.filter(id => {
+    return players[id] && !players[id].eliminated;
+  });
+
   if (aliveBots.length === 0) {
     paused = true;
     phase = "ended";
 
-    message = "You won. All bots are eliminated.";
+    message = "You won. All bots were eliminated.";
 
     if (typeof showEndMenu === "function") {
       showEndMenu("VICTORY", "All enemy bots were eliminated.");
@@ -97,6 +93,7 @@ function update(dt) {
 
   resolveBattles(simDt);
   captureCities(simDt);
+  checkBotEliminations();
 
   for (const unit of units) {
     moveUnit(unit, simDt);

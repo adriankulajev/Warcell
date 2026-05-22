@@ -2,7 +2,7 @@ function resetGameState(botCount = DEFAULT_BOT_COUNT, warmupSeconds = WARMUP_SEC
   botCountSetting = Math.max(1, Math.min(MAX_BOTS, botCount));
   warmupSetting = warmupSeconds;
 
-  resetPlayers(botCountSetting);
+  resetPlayers(botCountSetting, playerNameSetting, playerColorSetting);
 
   botIds = [];
   for (let i = 0; i < botCountSetting; i++) {

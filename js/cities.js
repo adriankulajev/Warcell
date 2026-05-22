@@ -119,8 +119,20 @@ function finishWarmup() {
     plan.chosen = true;
   }
 
-  const redCity = createCity("Red Capital", redSpawn.x, redSpawn.y, RED, 5200);
-  const redUnit = createUnit(RED, redSpawn.x + 2, redSpawn.y + 1, 120);
+  const redCity = createCity(
+    `${players[RED].name} Capital`,
+    redSpawn.x,
+    redSpawn.y,
+    RED,
+    5200
+  );
+
+  const redUnit = createUnit(
+    RED,
+    redSpawn.x + 2,
+    redSpawn.y + 1,
+    120
+  );
 
   for (const spawn of botSpawns) {
     const bot = players[spawn.owner];
@@ -136,9 +148,10 @@ function finishWarmup() {
 
   gameStarted = true;
   phase = "playing";
-updateLeaderboardRows();
+
+  updateLeaderboardRows();
+
   message = "War started.";
-  
 }
 
 function findRandomLandSpot() {
@@ -251,6 +264,13 @@ function tooCloseToCity(x, y) {
 function tryBuildCity(x, y) {
   if (!isLand(x, y)) {
     message = "Cannot build on water.";
+    return;
+  }
+
+  const redHasCity = cities.some(c => c.owner === RED);
+
+  if (!redHasCity) {
+    message = "You need at least one city to build new cities.";
     return;
   }
 

@@ -46,6 +46,8 @@ let warmupTime = WARMUP_SECONDS;
 let redSpawn = null;
 let botSpawns = [];
 let botSpawnPlans = [];
+let playerNameSetting = DEFAULT_PLAYER_NAME;
+let playerColorSetting = DEFAULT_PLAYER_COLOR;
 
 let selectedUnit = null;
 let selectedCity = null;

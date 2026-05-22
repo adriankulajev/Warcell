@@ -45,7 +45,7 @@ function drawTopBar() {
   ctx.font = "14px Arial";
 
   ctx.fillStyle = players[RED].color;
-  ctx.fillText(`Red money: ${Math.floor(players[RED].money)}`, 160, 27);
+  ctx.fillText(`${players[RED].name}: ${Math.floor(players[RED].money)}`, 160, 27);
 
   const aliveBots = botIds.filter(id =>
     cities.some(c => c.owner === id) || units.some(u => u.owner === id)
@@ -317,7 +317,7 @@ function updateLeaderboardRows() {
   for (let i = 0; i < owner.length; i++) {
     const id = owner[i];
 
-    if (id === NEUTRAL) continue;
+    if (id !== RED && players[id].eliminated) continue;
     if (landCounts[id] === undefined) continue;
 
     landCounts[id]++;

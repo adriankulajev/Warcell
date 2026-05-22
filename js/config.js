@@ -25,6 +25,9 @@ const NEUTRAL = 0;
 const RED = 1;
 const BLUE = 2;
 
+const DEFAULT_PLAYER_NAME = "Player";
+const DEFAULT_PLAYER_COLOR = "#d63434";
+
 const CITY_BUILD_COST = 90;
 const TROOP_COST = 55;
 const TROOP_AMOUNT = 80;
@@ -38,7 +41,12 @@ const UNIT_DAMAGE = 4.5;
 
 const players = {};
 
-function resetPlayers(botCount) {
+const STORAGE_PLAYER_NAME_KEY = "warcell.playerName";
+const STORAGE_PLAYER_COLOR_KEY = "warcell.playerColor";
+const STORAGE_BOT_COUNT_KEY = "warcell.botCount";
+const STORAGE_WARMUP_KEY = "warcell.warmup";
+
+function resetPlayers(botCount, playerName = DEFAULT_PLAYER_NAME, playerColor = DEFAULT_PLAYER_COLOR) {
   for (const key of Object.keys(players)) {
     delete players[key];
   }
@@ -53,13 +61,14 @@ function resetPlayers(botCount) {
   };
 
   players[RED] = {
-    id: RED,
-    name: "Redland",
-    color: "#d63434",
-    dark: "#8f1f1f",
-    money: PLAYER_INITIAL_MONEY,
-    isBot: false
-  };
+  id: RED,
+  name: playerName || DEFAULT_PLAYER_NAME,
+  color: playerColor || DEFAULT_PLAYER_COLOR,
+  dark: darkenHex(playerColor || DEFAULT_PLAYER_COLOR, 0.55),
+  money: PLAYER_INITIAL_MONEY,
+  isBot: false,
+  eliminated: false
+};
 
   for (let i = 0; i < botCount; i++) {
     const id = BOT_START_ID + i;
@@ -71,7 +80,8 @@ function resetPlayers(botCount) {
       color,
       dark: darkenHex(color, 0.55),
       money: PLAYER_INITIAL_MONEY,
-      isBot: true
+      isBot: true,
+      eliminated: false
     };
   }
 }

@@ -11,6 +11,9 @@ const pauseBackToMainButton = document.getElementById("pauseBackToMainButton");
 const singleplayerButton = document.getElementById("singleplayerButton");
 const backToMainButton = document.getElementById("backToMainButton");
 
+const playerNameInput = document.getElementById("playerNameInput");
+const playerColorInput = document.getElementById("playerColorInput");
+
 const botSlider = document.getElementById("botSlider");
 const botCountText = document.getElementById("botCountText");
 
@@ -197,6 +200,42 @@ function renderEndStats() {
   `;
 }
 
+function loadPlayerSettings() {
+  const savedName = localStorage.getItem(STORAGE_PLAYER_NAME_KEY);
+  const savedColor = localStorage.getItem(STORAGE_PLAYER_COLOR_KEY);
+  const savedBotCount = localStorage.getItem(STORAGE_BOT_COUNT_KEY);
+  const savedWarmup = localStorage.getItem(STORAGE_WARMUP_KEY);
+
+  if (savedName) {
+    playerNameSetting = savedName;
+    playerNameInput.value = savedName;
+  }
+
+  if (savedColor) {
+    playerColorSetting = savedColor;
+    playerColorInput.value = savedColor;
+  }
+
+  if (savedBotCount) {
+    botCountSetting = Number(savedBotCount);
+    botSlider.value = botCountSetting;
+    botCountText.textContent = botCountSetting;
+  }
+
+  if (savedWarmup) {
+    warmupSetting = Number(savedWarmup);
+    warmupSlider.value = warmupSetting;
+    warmupText.textContent = warmupSetting;
+  }
+}
+
+function savePlayerSettings() {
+  localStorage.setItem(STORAGE_PLAYER_NAME_KEY, playerNameSetting);
+  localStorage.setItem(STORAGE_PLAYER_COLOR_KEY, playerColorSetting);
+  localStorage.setItem(STORAGE_BOT_COUNT_KEY, String(botCountSetting));
+  localStorage.setItem(STORAGE_WARMUP_KEY, String(warmupSetting));
+}
+
 speedButton.addEventListener("click", e => {
   e.stopPropagation();
   speedMenu.classList.toggle("hidden");
@@ -226,19 +265,25 @@ window.addEventListener("click", () => {
 botSlider.addEventListener("input", () => {
   botCountSetting = Number(botSlider.value);
   botCountText.textContent = botCountSetting;
+  savePlayerSettings();
 });
 
 warmupSlider.addEventListener("input", () => {
   warmupSetting = Number(warmupSlider.value);
   warmupText.textContent = warmupSetting;
+  savePlayerSettings();
 });
 
 startButton.addEventListener("click", () => {
   botCountSetting = Number(botSlider.value);
   warmupSetting = Number(warmupSlider.value);
 
-  mainMenu.classList.add("hidden");
-  lobbyMenu.classList.add("hidden");
+  playerNameSetting = playerNameInput.value.trim() || DEFAULT_PLAYER_NAME;
+  playerColorSetting = playerColorInput.value;
+
+  savePlayerSettings();
+
+  hideAllMenus();
 
   startWarmup(botCountSetting, warmupSetting);
 });
@@ -375,3 +420,15 @@ pauseBackToLobbyButton.addEventListener("click", () => {
 pauseBackToMainButton.addEventListener("click", () => {
   returnToMainMenu();
 });
+
+playerNameInput.addEventListener("input", () => {
+  playerNameSetting = playerNameInput.value.trim() || DEFAULT_PLAYER_NAME;
+  savePlayerSettings();
+});
+
+playerColorInput.addEventListener("input", () => {
+  playerColorSetting = playerColorInput.value;
+  savePlayerSettings();
+});
+
+loadPlayerSettings();

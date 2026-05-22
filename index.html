@@ -14,6 +14,18 @@
       <h1>WARCELL</h1>
       <p>Dynamic border strategy prototype</p>
 
+      <div class="profile-row">
+        <div class="profile-name">
+          <label for="playerNameInput">Player name</label>
+          <input id="playerNameInput" type="text" maxlength="18" value="Player" />
+        </div>
+
+        <div class="profile-color">
+          <label for="playerColorInput">Color</label>
+          <input id="playerColorInput" type="color" value="#d63434" />
+        </div>
+      </div>
+
       <button id="singleplayerButton">Singleplayer</button>
       <button class="secondary-button" disabled>Multiplayer — later</button>
       <button class="secondary-button" disabled>Settings — later</button>
@@ -25,18 +37,20 @@
       <h1>LOBBY</h1>
       <p>Singleplayer setup</p>
 
-      <div class="menu-row">
-        <label for="botSlider">
-          Bots: <span id="botCountText">10</span>
-        </label>
-        <input id="botSlider" type="range" min="1" max="20" value="10" />
-      </div>
+      <div class="lobby-settings">
+        <div class="menu-row compact-row">
+          <label for="botSlider">
+            Bots: <span id="botCountText">10</span>
+          </label>
+          <input id="botSlider" type="range" min="1" max="20" value="10" />
+        </div>
 
-      <div class="menu-row">
-        <label for="warmupSlider">
-          Warmup: <span id="warmupText">10</span>s
-        </label>
-        <input id="warmupSlider" type="range" min="5" max="30" value="10" />
+        <div class="menu-row compact-row">
+          <label for="warmupSlider">
+            Warmup: <span id="warmupText">10</span>s
+          </label>
+          <input id="warmupSlider" type="range" min="5" max="30" value="10" />
+        </div>
       </div>
 
       <button id="startButton">Start Warmup</button>
@@ -85,15 +99,16 @@
   </div>
 
   <script src="js/config.js"></script>
-  <script src="js/state.js"></script>
-  <script src="js/map.js"></script>
-  <script src="js/reset.js"></script>
-  <script src="js/cities.js"></script>
-  <script src="js/units.js"></script>
-  <script src="js/ai.js"></script>
-  <script src="js/render.js"></script>
-  <script src="js/input.js"></script>
-  <script src="js/main.js"></script>
+<script src="js/state.js"></script>
+<script src="js/map.js"></script>
+<script src="js/reset.js"></script>
+<script src="js/cities.js"></script>
+<script src="js/units.js"></script>
+<script src="js/elimination.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/render.js"></script>
+<script src="js/input.js"></script>
+<script src="js/main.js"></script>
 </body>
 
 </html>
