@@ -50,6 +50,11 @@ function resetGameState(botCount = DEFAULT_BOT_COUNT, warmupSeconds = WARMUP_SEC
   ownershipDirty = true;
   terrainDirty = true;
 
+  cityExpansionTimer = 0;
+neutralClaimOwner.fill(NEUTRAL);
+cellCity.fill(0);
+nextCityId = 1;
+
   generateMap();
 
   message = "Warmup started. Choose your spawn.";

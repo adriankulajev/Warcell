@@ -18,6 +18,12 @@ ownershipCanvas.width = MAP_W;
 ownershipCanvas.height = MAP_H;
 const ownershipCtx = ownershipCanvas.getContext("2d");
 
+const neutralClaimOwner = new Uint16Array(MAP_W * MAP_H);
+const cellCity = new Uint16Array(MAP_W * MAP_H);
+
+let nextCityId = 1;
+let cityExpansionTimer = 0;
+
 let terrainDirty = true;
 let ownershipDirty = true;
 

@@ -86,10 +86,12 @@ function update(dt) {
 
     for (const city of cities) {
       if (city.owner !== NEUTRAL) {
-        players[city.owner].money += city.pop / 10000;
+        players[city.owner].money += city.pop / 1000;
       }
     }
   }
+
+  expandCitiesIntoNeutral(simDt);
 
   resolveBattles(simDt);
   captureCities(simDt);

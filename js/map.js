@@ -29,6 +29,9 @@ function generateMap() {
       if (islandShape > 0.83 + wobble) {
         terrain[i] = WATER;
         owner[i] = NEUTRAL;
+        control[i] = 0;
+        cellCity[i] = 0;
+        neutralClaimOwner[i] = NEUTRAL;
         continue;
       }
 
@@ -43,6 +46,8 @@ function generateMap() {
 
       owner[i] = NEUTRAL;
       control[i] = 0;
+      cellCity[i] = 0;
+      neutralClaimOwner[i] = NEUTRAL;
     }
   }
 
@@ -57,7 +62,7 @@ function screenToCell(mx, my) {
   };
 }
 
-function claimCircle(cx, cy, radius, playerId) {
+function claimCircle(cx, cy, radius, playerId, cityId = 0) {
   for (let y = cy - radius; y <= cy + radius; y++) {
     for (let x = cx - radius; x <= cx + radius; x++) {
       if (!isLand(x, y)) continue;
@@ -66,14 +71,21 @@ function claimCircle(cx, cy, radius, playerId) {
       const roughness = Math.sin(x * 0.4) * 2;
 
       if (d <= radius + roughness) {
-  const i = idx(x, y);
+        const i = idx(x, y);
 
-  if (owner[i] !== playerId) {
-    owner[i] = playerId;
-    control[i] = 0;
-    ownershipDirty = true;
-  }
-}
+        if (owner[i] !== playerId) {
+          owner[i] = playerId;
+          control[i] = 0;
+          neutralClaimOwner[i] = NEUTRAL;
+          ownershipDirty = true;
+        }
+
+        if (cityId) {
+          cellCity[i] = cityId;
+        } else {
+          cellCity[i] = findNearestCityIdForOwner(x, y, playerId);
+        }
+      }
     }
   }
 }

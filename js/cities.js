@@ -1,5 +1,6 @@
 function createCity(name, x, y, playerId, population = 3000) {
   const city = {
+    id: nextCityId++,
     name,
     x,
     y,
@@ -10,9 +11,68 @@ function createCity(name, x, y, playerId, population = 3000) {
   };
 
   cities.push(city);
-  claimCircle(x, y, 13, playerId);
+
+  claimCircle(x, y, 9, playerId, city.id);
+  reassignOwnedCellsToNearestCity(playerId);
 
   return city;
+}
+
+function expandCitiesIntoNeutral(dt) {
+  cityExpansionTimer += dt;
+
+  if (cityExpansionTimer < CITY_PASSIVE_EXPANSION_INTERVAL) return;
+
+  const expansionDt = cityExpansionTimer;
+  cityExpansionTimer = 0;
+
+  for (const city of cities) {
+    if (city.owner === NEUTRAL) continue;
+    if (!players[city.owner]) continue;
+    if (players[city.owner].eliminated) continue;
+
+    expandNeutralFromCity(city, expansionDt);
+  }
+}
+
+function expandNeutralFromCity(city, dt) {
+  const radius = CITY_PASSIVE_EXPANSION_RADIUS;
+
+  const minX = Math.max(0, Math.floor(city.x - radius));
+  const maxX = Math.min(MAP_W - 1, Math.floor(city.x + radius));
+
+  const minY = Math.max(0, Math.floor(city.y - radius));
+  const maxY = Math.min(MAP_H - 1, Math.floor(city.y + radius));
+
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
+      if (!isLand(x, y)) continue;
+
+      const i = idx(x, y);
+
+      if (owner[i] !== NEUTRAL) continue;
+      if (!hasNeighborOwner(x, y, city.owner)) continue;
+
+      const distance = Math.hypot(x - city.x, y - city.y);
+      if (distance > radius) continue;
+
+      if (neutralClaimOwner[i] !== city.owner) {
+        neutralClaimOwner[i] = city.owner;
+        control[i] = 0;
+      }
+
+      const distanceFactor = Math.max(0.25, 1 - distance / radius);
+      control[i] += CITY_PASSIVE_EXPANSION_POWER * dt * distanceFactor;
+
+      if (control[i] >= NEUTRAL_CLAIM_THRESHOLD) {
+        owner[i] = city.owner;
+        cellCity[i] = city.id;
+        control[i] = 0;
+        neutralClaimOwner[i] = NEUTRAL;
+        ownershipDirty = true;
+      }
+    }
+  }
 }
 
 function startWarmup(botCount, warmupSeconds = WARMUP_SECONDS) {
@@ -240,11 +300,17 @@ function captureCities(dt) {
     )}%`;
 
     if (city.capture >= CITY_CAPTURE_TIME) {
+      const oldOwner = city.owner;
+
       city.owner = capturingOwner;
       city.capture = 0;
       city.captureBy = NEUTRAL;
 
-      claimCircle(city.x, city.y, 9, capturingOwner);
+      transferCityField(city, capturingOwner);
+      claimCircle(city.x, city.y, 9, capturingOwner, city.id);
+
+      reassignOwnedCellsToNearestCity(oldOwner);
+      reassignOwnedCellsToNearestCity(capturingOwner);
 
       message = `${players[capturingOwner].name} captured ${city.name}.`;
     }
@@ -367,4 +433,71 @@ function findOwnedBuildSpot(playerId) {
   }
 
   return null;
+}
+
+function findNearestCityIdForOwner(x, y, playerId) {
+  let bestCity = null;
+  let bestD = Infinity;
+
+  for (const city of cities) {
+    if (city.owner !== playerId) continue;
+
+    const d = Math.hypot(city.x - x, city.y - y);
+
+    if (d < bestD) {
+      bestD = d;
+      bestCity = city;
+    }
+  }
+
+  return bestCity ? bestCity.id : 0;
+}
+
+function reassignOwnedCellsToNearestCity(playerId) {
+  const ownCities = cities.filter(c => c.owner === playerId);
+
+  if (ownCities.length === 0) {
+    for (let i = 0; i < owner.length; i++) {
+      if (owner[i] === playerId) {
+        cellCity[i] = 0;
+      }
+    }
+
+    return;
+  }
+
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      const i = idx(x, y);
+
+      if (owner[i] !== playerId) continue;
+
+      let bestCity = null;
+      let bestD = Infinity;
+
+      for (const city of ownCities) {
+        const d = Math.hypot(city.x - x, city.y - y);
+
+        if (d < bestD) {
+          bestD = d;
+          bestCity = city;
+        }
+      }
+
+      cellCity[i] = bestCity ? bestCity.id : 0;
+    }
+  }
+}
+
+function transferCityField(city, newOwner) {
+  for (let i = 0; i < owner.length; i++) {
+    if (cellCity[i] !== city.id) continue;
+    if (terrain[i] === WATER) continue;
+
+    owner[i] = newOwner;
+    control[i] = 0;
+    neutralClaimOwner[i] = NEUTRAL;
+  }
+
+  ownershipDirty = true;
 }

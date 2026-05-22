@@ -85,19 +85,34 @@ function captureAroundUnit(unit, dt) {
       const d = Math.hypot(x - unit.x, y - unit.y);
       if (d > radius) continue;
 
-      const enemyBonus = owner[i] === NEUTRAL ? 0.8 : 1.8;
+      const currentOwner = owner[i];
+
+      if (currentOwner === NEUTRAL) {
+        if (neutralClaimOwner[i] !== unit.owner) {
+          neutralClaimOwner[i] = unit.owner;
+          control[i] = 0;
+        }
+      }
+
+      const enemyBonus = currentOwner === NEUTRAL ? 0.45 : 1.8;
       const defense = terrainDefense(x, y) * enemyBonus;
 
       control[i] += (power / defense) * (1 - d / (radius + 1));
 
-      if (control[i] > 12) {
-  if (owner[i] !== unit.owner) {
-    owner[i] = unit.owner;
-    ownershipDirty = true;
-  }
+      const claimThreshold = currentOwner === NEUTRAL
+        ? NEUTRAL_CLAIM_THRESHOLD
+        : ENEMY_CLAIM_THRESHOLD;
 
-  control[i] = 0;
-}
+      if (control[i] > claimThreshold) {
+        if (owner[i] !== unit.owner) {
+          owner[i] = unit.owner;
+          cellCity[i] = findNearestCityIdForOwner(x, y, unit.owner);
+          neutralClaimOwner[i] = NEUTRAL;
+          ownershipDirty = true;
+        }
+
+        control[i] = 0;
+      }
     }
   }
 }
