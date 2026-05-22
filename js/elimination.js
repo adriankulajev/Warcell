@@ -80,6 +80,8 @@ function collapsePlayerTerritory(deadId) {
     for (const change of changes) {
       owner[change.i] = change.newOwner;
       control[change.i] = 0;
+      previousOwner[change.i] = NEUTRAL;
+      occupation[change.i] = 0;
     }
   }
 
@@ -88,6 +90,9 @@ function collapsePlayerTerritory(deadId) {
     if (owner[i] === deadId) {
       owner[i] = NEUTRAL;
       control[i] = 0;
+      previousOwner[i] = NEUTRAL;
+      occupation[i] = 0;
+      cellCity[i] = 0;
     }
   }
 
@@ -115,6 +120,7 @@ function eliminatePlayer(playerId) {
 
   removePlayerUnits(playerId);
   collapsePlayerTerritory(playerId);
+  clearOccupationFromPreviousOwner(playerId);
 
   if (selectedCity && selectedCity.owner === playerId) {
     selectedCity = null;
@@ -138,4 +144,15 @@ function checkBotEliminations() {
       eliminatePlayer(botId);
     }
   }
+}
+
+function clearOccupationFromPreviousOwner(deadId) {
+  for (let i = 0; i < owner.length; i++) {
+    if (previousOwner[i] === deadId) {
+      previousOwner[i] = NEUTRAL;
+      occupation[i] = 0;
+    }
+  }
+
+  ownershipDirty = true;
 }

@@ -1,3 +1,41 @@
+function findNeutralExpansionTarget(unit, searchRadius = AI_NEUTRAL_SEARCH_RADIUS) {
+  let best = null;
+  let bestScore = Infinity;
+
+  const ux = Math.floor(unit.x);
+  const uy = Math.floor(unit.y);
+
+  const minX = Math.max(0, ux - searchRadius);
+  const maxX = Math.min(MAP_W - 1, ux + searchRadius);
+
+  const minY = Math.max(0, uy - searchRadius);
+  const maxY = Math.min(MAP_H - 1, uy + searchRadius);
+
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
+      if (!isLand(x, y)) continue;
+
+      const i = idx(x, y);
+
+      if (owner[i] !== NEUTRAL) continue;
+      if (!hasNeighborOwner(x, y, unit.owner)) continue;
+
+      const d = Math.hypot(x - unit.x, y - unit.y);
+
+      if (d > searchRadius) continue;
+
+      const score = d + Math.random() * 4;
+
+      if (score < bestScore) {
+        bestScore = score;
+        best = { x, y };
+      }
+    }
+  }
+
+  return best;
+}
+
 function updateAI(dt) {
   aiOrderTimer += dt;
   aiEcoTimer += dt;
@@ -12,10 +50,17 @@ function updateAI(dt) {
       if (unit.pinned) continue;
       if (unit.path.length > 0) continue;
 
-      const target = nearestEnemyCity(unit);
+      const neutralTarget = findNeutralExpansionTarget(unit);
 
-      if (target) {
-        issueMoveOrder(unit, target.x, target.y);
+      if (neutralTarget && Math.random() < AI_NEUTRAL_PRIORITY_CHANCE) {
+        issueMoveOrder(unit, neutralTarget.x, neutralTarget.y, true);
+        continue;
+      }
+
+      const enemyTarget = nearestEnemyCity(unit);
+
+      if (enemyTarget) {
+        issueMoveOrder(unit, enemyTarget.x, enemyTarget.y, true);
       }
     }
   }

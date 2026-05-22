@@ -14,7 +14,7 @@ function createUnit(playerId, x, y, soldiers = TROOP_AMOUNT) {
   return unit;
 }
 
-function issueMoveOrder(unit, x, y) {
+function issueMoveOrder(unit, x, y, silent = false) {
   x = Math.floor(x);
   y = Math.floor(y);
 
@@ -24,12 +24,16 @@ function issueMoveOrder(unit, x, y) {
   const path = findPath(startX, startY, x, y);
 
   if (path.length === 0) {
-    message = "No land path to target.";
+    if (!silent) {
+      message = "No land path to target.";
+    }
     return;
   }
 
   unit.path = path;
-  message = "Move order issued.";
+  if (!silent) {
+    message = "Move order issued.";
+  }
 }
 
 function moveUnit(unit, dt) {
@@ -105,10 +109,11 @@ function captureAroundUnit(unit, dt) {
 
       if (control[i] > claimThreshold) {
         if (owner[i] !== unit.owner) {
-          owner[i] = unit.owner;
-          cellCity[i] = findNearestCityIdForOwner(x, y, unit.owner);
-          neutralClaimOwner[i] = NEUTRAL;
-          ownershipDirty = true;
+          setCellOwner(
+            i,
+            unit.owner,
+            findNearestCityIdForOwner(x, y, unit.owner)
+          );
         }
 
         control[i] = 0;

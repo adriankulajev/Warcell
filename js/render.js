@@ -113,7 +113,41 @@ function updateOwnershipCache() {
 
   ownershipCtx.restore();
 
-  // Border layer
+  // Occupation tint layer
+ownershipCtx.save();
+ownershipCtx.globalAlpha = 0.42;
+ownershipCtx.fillStyle = "#101820";
+
+for (let y = 0; y < MAP_H; y++) {
+  for (let x = 0; x < MAP_W; x++) {
+    const i = idx(x, y);
+
+    if (terrain[i] === WATER) continue;
+    if (owner[i] === NEUTRAL) continue;
+    if (occupation[i] <= 0) continue;
+    if (previousOwner[i] === NEUTRAL) continue;
+
+    ownershipCtx.fillRect(x, y, 1, 1);
+  }
+}
+
+ownershipCtx.restore();
+
+  // City field internal borders
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      const i = idx(x, y);
+
+      if (terrain[i] === WATER) continue;
+      if (owner[i] === NEUTRAL) continue;
+      if (!isCityFieldBorderCell(x, y)) continue;
+
+      ownershipCtx.fillStyle = "rgba(255, 255, 255, 0.22)";
+      ownershipCtx.fillRect(x, y, 1, 1);
+    }
+  }
+
+  // Country/player border layer
   for (let y = 0; y < MAP_H; y++) {
     for (let x = 0; x < MAP_W; x++) {
       const i = idx(x, y);
@@ -519,6 +553,6 @@ function draw() {
   drawPanel();
   drawLeaderboard();
 
-if (phase === "warmup") drawSpawnOverlay();
-if (buildMode) drawBuildCursor();
+  if (phase === "warmup") drawSpawnOverlay();
+  if (buildMode) drawBuildCursor();
 }

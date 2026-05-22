@@ -7,6 +7,8 @@ const ctx = canvas.getContext("2d");
 const terrain = new Uint8Array(MAP_W * MAP_H);
 const owner = new Uint8Array(MAP_W * MAP_H);
 const control = new Float32Array(MAP_W * MAP_H);
+const previousOwner = new Uint16Array(MAP_W * MAP_H);
+const occupation = new Float32Array(MAP_W * MAP_H);
 
 const terrainCanvas = document.createElement("canvas");
 terrainCanvas.width = MAP_W;

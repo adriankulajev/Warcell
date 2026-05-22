@@ -32,6 +32,8 @@ function generateMap() {
         control[i] = 0;
         cellCity[i] = 0;
         neutralClaimOwner[i] = NEUTRAL;
+        previousOwner[i] = NEUTRAL;
+        occupation[i] = 0;
         continue;
       }
 
@@ -48,6 +50,8 @@ function generateMap() {
       control[i] = 0;
       cellCity[i] = 0;
       neutralClaimOwner[i] = NEUTRAL;
+      previousOwner[i] = NEUTRAL;
+      occupation[i] = 0;
     }
   }
 
@@ -62,7 +66,7 @@ function screenToCell(mx, my) {
   };
 }
 
-function claimCircle(cx, cy, radius, playerId, cityId = 0) {
+function claimCircle(cx, cy, radius, playerId, cityId = 0, claimMode = "all") {
   for (let y = cy - radius; y <= cy + radius; y++) {
     for (let x = cx - radius; x <= cx + radius; x++) {
       if (!isLand(x, y)) continue;
@@ -72,12 +76,20 @@ function claimCircle(cx, cy, radius, playerId, cityId = 0) {
 
       if (d <= radius + roughness) {
         const i = idx(x, y);
+        const currentOwner = owner[i];
 
-        if (owner[i] !== playerId) {
-          owner[i] = playerId;
-          control[i] = 0;
-          neutralClaimOwner[i] = NEUTRAL;
-          ownershipDirty = true;
+        if (claimMode === "neutralOrOwn") {
+          if (currentOwner !== NEUTRAL && currentOwner !== playerId) {
+            continue;
+          }
+        }
+
+        setCellOwner(i, playerId, cityId);
+
+        if (cityId) {
+          cellCity[i] = cityId;
+        } else {
+          cellCity[i] = findNearestCityIdForOwner(x, y, playerId);
         }
 
         if (cityId) {
@@ -88,6 +100,35 @@ function claimCircle(cx, cy, radius, playerId, cityId = 0) {
       }
     }
   }
+}
+
+function setCellOwner(i, newOwner, cityId = 0) {
+  const oldOwner = owner[i];
+
+  if (oldOwner === newOwner) {
+    if (cityId) cellCity[i] = cityId;
+    return;
+  }
+
+  if (oldOwner !== NEUTRAL && newOwner !== NEUTRAL) {
+    previousOwner[i] = oldOwner;
+    occupation[i] = 1;
+  } else {
+    previousOwner[i] = NEUTRAL;
+    occupation[i] = 0;
+  }
+
+  owner[i] = newOwner;
+  control[i] = 0;
+  neutralClaimOwner[i] = NEUTRAL;
+
+  if (cityId) {
+    cellCity[i] = cityId;
+  } else {
+    cellCity[i] = findNearestCityIdForOwner(i % MAP_W, Math.floor(i / MAP_W), newOwner);
+  }
+
+  ownershipDirty = true;
 }
 
 function terrainDefense(x, y) {
@@ -149,6 +190,40 @@ function isBorderCell(x, y) {
 
     if (!isLand(nx, ny)) continue;
     if (owner[idx(nx, ny)] !== currentOwner) return true;
+  }
+
+  return false;
+}
+
+function isCityFieldBorderCell(x, y) {
+  if (!isLand(x, y)) return false;
+
+  const i = idx(x, y);
+  const currentOwner = owner[i];
+  const currentCity = cellCity[i];
+
+  if (currentOwner === NEUTRAL) return false;
+  if (currentCity === 0) return false;
+
+  const dirs = [
+    [1, 0],
+    [0, 1]
+  ];
+
+  for (const [dx, dy] of dirs) {
+    const nx = x + dx;
+    const ny = y + dy;
+
+    if (!isLand(nx, ny)) continue;
+
+    const ni = idx(nx, ny);
+
+    if (owner[ni] !== currentOwner) continue;
+    if (cellCity[ni] === 0) continue;
+
+    if (cellCity[ni] !== currentCity) {
+      return true;
+    }
   }
 
   return false;

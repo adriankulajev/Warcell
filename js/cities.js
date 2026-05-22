@@ -12,7 +12,7 @@ function createCity(name, x, y, playerId, population = 3000) {
 
   cities.push(city);
 
-  claimCircle(x, y, 9, playerId, city.id);
+  claimCircle(x, y, 9, playerId, city.id, "neutralOrOwn");
   reassignOwnedCellsToNearestCity(playerId);
 
   return city;
@@ -65,11 +65,11 @@ function expandNeutralFromCity(city, dt) {
       control[i] += CITY_PASSIVE_EXPANSION_POWER * dt * distanceFactor;
 
       if (control[i] >= NEUTRAL_CLAIM_THRESHOLD) {
-        owner[i] = city.owner;
-        cellCity[i] = city.id;
-        control[i] = 0;
-        neutralClaimOwner[i] = NEUTRAL;
-        ownershipDirty = true;
+        setCellOwner(
+          i,
+          city.owner,
+          findNearestCityIdForOwner(x, y, city.owner)
+        );
       }
     }
   }
@@ -487,6 +487,7 @@ function reassignOwnedCellsToNearestCity(playerId) {
       cellCity[i] = bestCity ? bestCity.id : 0;
     }
   }
+  ownershipDirty = true;
 }
 
 function transferCityField(city, newOwner) {
@@ -494,9 +495,7 @@ function transferCityField(city, newOwner) {
     if (cellCity[i] !== city.id) continue;
     if (terrain[i] === WATER) continue;
 
-    owner[i] = newOwner;
-    control[i] = 0;
-    neutralClaimOwner[i] = NEUTRAL;
+    setCellOwner(i, newOwner, city.id);
   }
 
   ownershipDirty = true;

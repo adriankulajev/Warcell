@@ -55,6 +55,9 @@ neutralClaimOwner.fill(NEUTRAL);
 cellCity.fill(0);
 nextCityId = 1;
 
+previousOwner.fill(NEUTRAL);
+occupation.fill(0);
+
   generateMap();
 
   message = "Warmup started. Choose your spawn.";
