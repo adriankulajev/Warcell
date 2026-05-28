@@ -322,3 +322,33 @@ function reconstructPath(cameFrom, start, goal) {
   path.reverse();
   return path;
 }
+
+function isOwnBorderCell(x, y, playerId) {
+  if (!isLand(x, y)) return false;
+
+  const i = idx(x, y);
+
+  if (owner[i] !== playerId) return false;
+
+  const dirs = [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1]
+  ];
+
+  for (const [dx, dy] of dirs) {
+    const nx = x + dx;
+    const ny = y + dy;
+
+    if (!isLand(nx, ny)) continue;
+
+    const ni = idx(nx, ny);
+
+    if (owner[ni] !== playerId) {
+      return true;
+    }
+  }
+
+  return false;
+}

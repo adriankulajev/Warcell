@@ -286,7 +286,7 @@ function drawUnits() {
       ctx.stroke();
     }
 
-    ctx.fillStyle = selectedUnit === unit ? "#fff" : "#111";
+    ctx.fillStyle = isUnitSelected(unit) ? "#fff" : "#111";
     ctx.beginPath();
     ctx.arc(sx, sy, unit.pinned ? 12 : 9, 0, Math.PI * 2);
     ctx.fill();
@@ -337,6 +337,17 @@ function drawPanel() {
     30,
     window.innerHeight - 24
   );
+  ctx.fillText(
+  "Drag = box select. Shift + click = add unit. Shift + drag = formation line.",
+  30,
+  window.innerHeight - 48
+);
+
+ctx.fillText(
+  "RMB = move group. Q = split. Friendly overlap = merge.",
+  30,
+  window.innerHeight - 24
+);
 
   ctx.fillStyle = "#ffd34d";
   ctx.fillText(message, 30, window.innerHeight - 5);
@@ -543,6 +554,24 @@ function drawSpawnMarker(x, y, color, label) {
   ctx.fillText(label, sx + 15, sy + 4);
 }
 
+function drawSelectionBox() {
+  if (!selectionBox.active) return;
+
+  const x = Math.min(selectionBox.startX, selectionBox.endX);
+  const y = Math.min(selectionBox.startY, selectionBox.endY);
+  const w = Math.abs(selectionBox.endX - selectionBox.startX);
+  const h = Math.abs(selectionBox.endY - selectionBox.startY);
+
+  if (w < 4 && h < 4) return;
+
+  ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
+  ctx.fillRect(x, y, w, h);
+
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.65)";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x, y, w, h);
+}
+
 function draw() {
   ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
 
@@ -551,9 +580,55 @@ function draw() {
   drawSpawnMarkers();
   drawCities();
   drawUnits();
+  drawSelectionBox();
+  drawFormationLinePreview();
+  drawFrontlineOrderPreview();
   drawPanel();
   drawLeaderboard();
 
   if (phase === "warmup") drawSpawnOverlay();
   if (buildMode) drawBuildCursor();
+}
+
+function drawFormationLinePreview() {
+  if (!formationLine.active) return;
+
+  ctx.strokeStyle = "rgba(255, 211, 77, 0.9)";
+  ctx.lineWidth = 2;
+
+  ctx.beginPath();
+  ctx.moveTo(formationLine.startX, formationLine.startY);
+  ctx.lineTo(formationLine.endX, formationLine.endY);
+  ctx.stroke();
+
+  ctx.fillStyle = "rgba(255, 211, 77, 0.18)";
+  ctx.beginPath();
+  ctx.arc(formationLine.startX, formationLine.startY, 5, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(formationLine.endX, formationLine.endY, 5, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawFrontlineOrderPreview() {
+  if (!frontlineOrder.active) return;
+
+  ctx.strokeStyle = "rgba(255, 80, 80, 0.9)";
+  ctx.lineWidth = 2;
+
+  ctx.beginPath();
+  ctx.moveTo(frontlineOrder.startX, frontlineOrder.startY);
+  ctx.lineTo(frontlineOrder.endX, frontlineOrder.endY);
+  ctx.stroke();
+
+  ctx.fillStyle = "rgba(255, 80, 80, 0.22)";
+
+  ctx.beginPath();
+  ctx.arc(frontlineOrder.startX, frontlineOrder.startY, 5, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(frontlineOrder.endX, frontlineOrder.endY, 5, 0, Math.PI * 2);
+  ctx.fill();
 }

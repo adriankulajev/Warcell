@@ -377,11 +377,13 @@ function buyTroops() {
   players[RED].money -= TROOP_COST;
 
   selectedUnit = createUnit(
-    RED,
-    selectedCity.x + 2,
-    selectedCity.y + 1,
-    TROOP_AMOUNT
-  );
+  RED,
+  selectedCity.x + 2,
+  selectedCity.y + 1,
+  TROOP_AMOUNT
+);
+
+selectedUnits = [selectedUnit];
 
   message = `Bought ${TROOP_AMOUNT} troops at ${selectedCity.name}.`;
 }

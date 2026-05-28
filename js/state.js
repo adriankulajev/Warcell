@@ -57,7 +57,33 @@ let botSpawnPlans = [];
 let playerNameSetting = DEFAULT_PLAYER_NAME;
 let playerColorSetting = DEFAULT_PLAYER_COLOR;
 
+let selectedUnits = [];
 let selectedUnit = null;
+let selectionBox = {
+  active: false,
+  startX: 0,
+  startY: 0,
+  endX: 0,
+  endY: 0,
+  append: false
+};
+
+let formationLine = {
+  active: false,
+  startX: 0,
+  startY: 0,
+  endX: 0,
+  endY: 0
+};
+
+let frontlineOrder = {
+  active: false,
+  startX: 0,
+  startY: 0,
+  endX: 0,
+  endY: 0
+};
+
 let selectedCity = null;
 let mouseCell = { x: 0, y: 0 };
 

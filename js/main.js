@@ -102,15 +102,23 @@ function update(dt) {
     captureAroundUnit(unit, simDt);
   }
 
+  for (const unit of units) {
+    moveUnit(unit, simDt);
+    captureAroundUnit(unit, simDt);
+  }
+
+  updateMergeCooldowns(simDt);
+  autoMergeFriendlyUnits();
+
   removeDeadUnits();
   updateAI(simDt);
   checkWinLoss();
   leaderboardUpdateTimer += simDt;
 
-if (leaderboardUpdateTimer >= 0.5) {
-  leaderboardUpdateTimer = 0;
-  updateLeaderboardRows();
-}
+  if (leaderboardUpdateTimer >= 0.5) {
+    leaderboardUpdateTimer = 0;
+    updateLeaderboardRows();
+  }
 }
 
 function updateFPS(rawDt) {
@@ -143,15 +151,15 @@ function loop(now) {
   }
 
   update(dt);
-draw();
+  draw();
 
-if (typeof syncPauseBorder === "function") {
-  syncPauseBorder();
-}
+  if (typeof syncPauseBorder === "function") {
+    syncPauseBorder();
+  }
 
-if (typeof syncSpeedControl === "function") {
-  syncSpeedControl();
-}
+  if (typeof syncSpeedControl === "function") {
+    syncSpeedControl();
+  }
 
   requestAnimationFrame(loop);
 }

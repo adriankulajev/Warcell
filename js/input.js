@@ -290,38 +290,173 @@ startButton.addEventListener("click", () => {
 
 canvas.addEventListener("mousemove", e => {
   mouseCell = screenToCell(e.clientX, e.clientY);
+
+  if (selectionBox.active) {
+    selectionBox.endX = e.clientX;
+    selectionBox.endY = e.clientY;
+  }
+
+  if (formationLine.active) {
+    formationLine.endX = e.clientX;
+    formationLine.endY = e.clientY;
+  }
+
+  if (frontlineOrder.active) {
+    frontlineOrder.endX = e.clientX;
+    frontlineOrder.endY = e.clientY;
+  }
 });
 
-canvas.addEventListener("click", e => {
+canvas.addEventListener("mousedown", e => {
+  if (e.button === 2 && e.shiftKey && selectedUnits.length > 0 && phase === "playing") {
+    frontlineOrder.active = true;
+    frontlineOrder.startX = e.clientX;
+    frontlineOrder.startY = e.clientY;
+    frontlineOrder.endX = e.clientX;
+    frontlineOrder.endY = e.clientY;
+    return;
+  }
+
+  if (e.button !== 0) return;
+
+  if (e.shiftKey && selectedUnits.length > 0 && phase === "playing") {
+    formationLine.active = true;
+    formationLine.startX = e.clientX;
+    formationLine.startY = e.clientY;
+    formationLine.endX = e.clientX;
+    formationLine.endY = e.clientY;
+    return;
+  }
+
+  selectionBox.active = true;
+  selectionBox.startX = e.clientX;
+  selectionBox.startY = e.clientY;
+  selectionBox.endX = e.clientX;
+  selectionBox.endY = e.clientY;
+  selectionBox.append = false;
+});
+
+canvas.addEventListener("mouseup", e => {
+  if (e.button === 2 && frontlineOrder.active) {
+    const dragDistance = Math.hypot(
+      frontlineOrder.endX - frontlineOrder.startX,
+      frontlineOrder.endY - frontlineOrder.startY
+    );
+
+    const startCell = screenToCell(frontlineOrder.startX, frontlineOrder.startY);
+    const endCell = screenToCell(e.clientX, e.clientY);
+
+    frontlineOrder.active = false;
+
+    if (
+      inBounds(startCell.x, startCell.y) &&
+      inBounds(endCell.x, endCell.y)
+    ) {
+      if (dragDistance > 8) {
+        issueFrontlineOrderFromLine(startCell, endCell);
+      } else {
+        issueFrontlineOrderFromPoint(endCell);
+      }
+    }
+
+    return;
+  }
+
+  if (e.button !== 0) return;
+
+  // čia lieka tavo senas LMB mouseup kodas
+
   const cell = screenToCell(e.clientX, e.clientY);
+
+  if (formationLine.active) {
+    const dragDistance = Math.hypot(
+      formationLine.endX - formationLine.startX,
+      formationLine.endY - formationLine.startY
+    );
+
+    const wasDraggingLine = dragDistance > 8;
+
+    formationLine.active = false;
+
+    if (wasDraggingLine) {
+      const startCell = screenToCell(
+        formationLine.startX,
+        formationLine.startY
+      );
+
+      const endCell = screenToCell(
+        e.clientX,
+        e.clientY
+      );
+
+      if (
+        inBounds(startCell.x, startCell.y) &&
+        inBounds(endCell.x, endCell.y)
+      ) {
+        issueFormationLineOrder(startCell, endCell);
+      }
+
+      return;
+    }
+
+    // If Shift + click without dragging, continue as normal click selection.
+  }
+
+  const dragDistance = Math.hypot(
+    selectionBox.endX - selectionBox.startX,
+    selectionBox.endY - selectionBox.startY
+  );
+
+  const wasDragging = dragDistance > 8;
+  const append = selectionBox.append;
+
+  selectionBox.active = false;
 
   if (!inBounds(cell.x, cell.y)) return;
 
   if (phase === "menu") {
-  return;
-}
+    return;
+  }
 
-if (phase === "warmup") {
-  chooseRedSpawn(cell.x, cell.y);
-  return;
-}
+  if (phase === "warmup") {
+    chooseRedSpawn(cell.x, cell.y);
+    return;
+  }
 
   if (buildMode) {
     tryBuildCity(cell.x, cell.y);
     return;
   }
 
-  selectedUnit = null;
-  selectedCity = null;
+  if (wasDragging) {
+    selectUnitsInBox({
+      startX: selectionBox.startX,
+      startY: selectionBox.startY,
+      endX: e.clientX,
+      endY: e.clientY
+    }, append);
 
-  for (const unit of units) {
-    if (unit.owner !== RED) continue;
+    return;
+  }
 
-    if (Math.hypot(unit.x - cell.x, unit.y - cell.y) < 3) {
-      selectedUnit = unit;
-      message = `Selected unit: ${Math.ceil(unit.soldiers)} soldiers.`;
-      return;
+  const clickedUnit = getPlayerUnitAtCell(cell);
+
+  if (clickedUnit) {
+    if (e.shiftKey) {
+      toggleUnitSelection(clickedUnit);
+    } else {
+      selectOnlyUnit(clickedUnit);
     }
+
+    message = selectedUnits.length === 1
+      ? `Selected unit: ${Math.ceil(clickedUnit.soldiers)} soldiers.`
+      : `Selected ${selectedUnits.length} units.`;
+
+    return;
+  }
+
+  if (!e.shiftKey) {
+    clearUnitSelection();
   }
 
   const city = nearestCity(cell, 4);
@@ -329,44 +464,54 @@ if (phase === "warmup") {
   if (city && city.owner === RED) {
     selectedCity = city;
     message = `Selected ${city.name}. Press T to buy troops.`;
+  } else {
+    selectedCity = null;
   }
 });
 
 canvas.addEventListener("contextmenu", e => {
   e.preventDefault();
 
-  if (!selectedUnit) return;
+  if (frontlineOrder.active || e.shiftKey) {
+    return;
+  }
+
+  if (phase !== "playing") return;
 
   const cell = screenToCell(e.clientX, e.clientY);
 
   if (!inBounds(cell.x, cell.y)) return;
   if (!isLand(cell.x, cell.y)) return;
 
-  issueMoveOrder(selectedUnit, cell.x, cell.y);
+  if (selectedUnits.length > 0) {
+    issueGroupMoveOrder(cell.x, cell.y);
+  } else if (selectedUnit) {
+    issueMoveOrder(selectedUnit, cell.x, cell.y);
+  }
 });
 
 window.addEventListener("keydown", e => {
   const key = e.key.toLowerCase();
 
   if (e.code === "Space" && phase === "playing") {
-  paused = !paused;
-  pauseMenuOpen = false;
-  pauseMenu.classList.add("hidden");
-}
+    paused = !paused;
+    pauseMenuOpen = false;
+    pauseMenu.classList.add("hidden");
+  }
 
-if (e.code === "Escape") {
-  if (phase === "playing") {
-    if (pauseMenuOpen) {
-      hidePauseMenu();
-    } else {
-      showPauseMenu();
+  if (e.code === "Escape") {
+    if (phase === "playing") {
+      if (pauseMenuOpen) {
+        hidePauseMenu();
+      } else {
+        showPauseMenu();
+      }
+    }
+
+    if (phase === "warmup") {
+      returnToLobby();
     }
   }
-
-  if (phase === "warmup") {
-    returnToLobby();
-  }
-}
 
   if (key === "b" && gameStarted) {
     buildMode = !buildMode;
@@ -381,10 +526,21 @@ if (e.code === "Escape") {
     buyTroops();
   }
 
+  window.addEventListener("keydown", e => {
+    const key = e.key.toLowerCase();
+
+    if (key === "q" && phase === "playing") {
+      splitSelectedUnit();
+    }
+
+    // kiti hotkeys...
+  });
+
+
   if (key === "1") setGameSpeed(0.5);
-if (key === "2") setGameSpeed(1);
-if (key === "3") setGameSpeed(2);
-if (key === "4") setGameSpeed(4);
+  if (key === "2") setGameSpeed(1);
+  if (key === "3") setGameSpeed(2);
+  if (key === "4") setGameSpeed(4);
 });
 
 playAgainButton.addEventListener("click", () => {
