@@ -13,6 +13,7 @@ const backToMainButton = document.getElementById("backToMainButton");
 
 const playerNameInput = document.getElementById("playerNameInput");
 const playerColorInput = document.getElementById("playerColorInput");
+const playerSlotsList = document.getElementById("playerSlotsList");
 
 const botSlider = document.getElementById("botSlider");
 const botCountText = document.getElementById("botCountText");
@@ -234,6 +235,83 @@ function savePlayerSettings() {
   localStorage.setItem(STORAGE_PLAYER_COLOR_KEY, playerColorSetting);
   localStorage.setItem(STORAGE_BOT_COUNT_KEY, String(botCountSetting));
   localStorage.setItem(STORAGE_WARMUP_KEY, String(warmupSetting));
+}
+
+function getUnitStatus(unit) {
+  if (unit.retreating) return "Retreating";
+  if (unit.pinned) return "Pinned";
+  if (unit.path && unit.path.length > 0) return "Moving";
+  return "Idle";
+}
+
+function getSelectedUnitStats() {
+  const group = selectedUnits.filter(
+    unit => unit.owner === RED && unit.soldiers > 0
+  );
+
+  const stats = {
+    count: group.length,
+    soldiers: 0,
+    idle: 0,
+    moving: 0,
+    pinned: 0,
+    retreating: 0
+  };
+
+  for (const unit of group) {
+    stats.soldiers += unit.soldiers;
+
+    const status = getUnitStatus(unit);
+
+    if (status === "Idle") stats.idle++;
+    if (status === "Moving") stats.moving++;
+    if (status === "Pinned") stats.pinned++;
+    if (status === "Retreating") stats.retreating++;
+  }
+
+  return stats;
+}
+
+function renderLobbySlots() {
+  if (!playerSlotsList) return;
+
+  const playerColor = playerColorInput.value || DEFAULT_PLAYER_COLOR;
+  const playerName = playerNameInput.value.trim() || DEFAULT_PLAYER_NAME;
+
+  let html = `
+    <div class="player-slot">
+      <span class="player-slot-dot" style="background:${playerColor}"></span>
+      <span class="player-slot-name">P1. ${playerName}</span>
+      <span class="player-slot-type">Player</span>
+    </div>
+  `;
+
+  const previewBots = Math.min(botCountSetting, 12);
+
+  for (let i = 0; i < previewBots; i++) {
+    const botName = BOT_NAMES[i % BOT_NAMES.length];
+    const botColor = BOT_COLORS[i % BOT_COLORS.length];
+
+    html += `
+      <div class="player-slot">
+        <span class="player-slot-dot" style="background:${botColor}"></span>
+        <span class="player-slot-name">B${i + 1}. ${botName}</span>
+        <span class="player-slot-type">Bot</span>
+      </div>
+    `;
+  }
+
+  if (botCountSetting > previewBots) {
+    html += `
+      <div class="player-slot">
+        <span class="player-slot-dot" style="background:#7f93a8"></span>
+        <span class="player-slot-name">+${botCountSetting - previewBots} more bots</span>
+        <span class="player-slot-type">Hidden</span>
+      </div>
+    `;
+  }
+
+  playerSlotsList.innerHTML = html;
 }
 
 speedButton.addEventListener("click", e => {
@@ -483,6 +561,14 @@ canvas.addEventListener("contextmenu", e => {
   if (!inBounds(cell.x, cell.y)) return;
   if (!isLand(cell.x, cell.y)) return;
 
+  if (selectedUnits.some(unit => unit.pinned)) {
+    const handledRetreat = issueSelectedRetreatOrder(cell.x, cell.y);
+
+    if (handledRetreat) {
+      return;
+    }
+  }
+
   if (selectedUnits.length > 0) {
     issueGroupMoveOrder(cell.x, cell.y);
   } else if (selectedUnit) {
@@ -587,4 +673,12 @@ playerColorInput.addEventListener("input", () => {
   savePlayerSettings();
 });
 
+singleplayerButton.addEventListener("click", () => {
+  mainMenu.classList.add("hidden");
+  lobbyMenu.classList.remove("hidden");
+
+  renderLobbySlots();
+});
+
 loadPlayerSettings();
+renderLobbySlots();

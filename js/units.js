@@ -8,6 +8,9 @@ function createUnit(playerId, x, y, soldiers = TROOP_AMOUNT) {
     speed: playerId === RED ? 7.0 : 4.8,
     path: [],
     pinned: false,
+    retreating: false,
+    retreatTarget: null,
+    retreatTimer: 0,
     mergeCooldown: 0
   };
 
@@ -37,9 +40,27 @@ function issueMoveOrder(unit, x, y, silent = false) {
   }
 }
 
+function finishRetreat(unit) {
+  unit.retreating = false;
+  unit.retreatTarget = null;
+  unit.retreatTimer = 0;
+}
+
 function moveUnit(unit, dt) {
+  if (unit.retreating && unit.retreatTimer > 0) {
+    unit.retreatTimer = Math.max(0, unit.retreatTimer - dt);
+    unit.soldiers -= RETREAT_DAMAGE_PER_SECOND * dt;
+  }
+
   if (unit.pinned) return;
-  if (!unit.path || unit.path.length === 0) return;
+
+  if (!unit.path || unit.path.length === 0) {
+    if (unit.retreating) {
+      finishRetreat(unit);
+    }
+
+    return;
+  }
 
   const next = unit.path[0];
 
@@ -55,11 +76,21 @@ function moveUnit(unit, dt) {
     unit.x = tx;
     unit.y = ty;
     unit.path.shift();
+
+    if (unit.path.length === 0 && unit.retreating) {
+      finishRetreat(unit);
+    }
+
     return;
   }
 
+  const speedMultiplier = unit.retreating
+    ? RETREAT_SPEED_MULTIPLIER
+    : 1;
+
   const speed =
     unit.speed *
+    speedMultiplier *
     terrainSpeed(Math.floor(unit.x), Math.floor(unit.y)) *
     dt;
 
@@ -70,6 +101,7 @@ function moveUnit(unit, dt) {
 }
 
 function captureAroundUnit(unit, dt) {
+  if (unit.retreating) return;
   if (unit.pinned) return;
 
   const ux = Math.floor(unit.x);
@@ -132,6 +164,8 @@ function resolveBattles(dt) {
     for (let b = a + 1; b < units.length; b++) {
       const u1 = units[a];
       const u2 = units[b];
+
+      if (u1.retreating || u2.retreating) continue;
 
       if (u1.owner === u2.owner) continue;
       if (u1.soldiers <= 0 || u2.soldiers <= 0) continue;
@@ -649,4 +683,75 @@ function assignUnitsToBorderCells(group, borderCells) {
 
     issueMoveOrder(group[i], target.x, target.y, true);
   }
+}
+
+function isFriendlyRetreatCell(x, y, playerId) {
+  if (!inBounds(x, y)) return false;
+  if (!isLand(x, y)) return false;
+
+  return owner[idx(x, y)] === playerId;
+}
+
+function issueRetreatOrder(unit, x, y) {
+  if (!unit) return false;
+  if (unit.owner !== RED) return false;
+
+  if (!unit.pinned) {
+    return false;
+  }
+
+  x = Math.floor(x);
+  y = Math.floor(y);
+
+  if (!isFriendlyRetreatCell(x, y, unit.owner)) {
+    return false;
+  }
+
+  const startX = Math.floor(unit.x);
+  const startY = Math.floor(unit.y);
+
+  const path = findPath(startX, startY, x, y);
+
+  if (path.length === 0) {
+    return false;
+  }
+
+  unit.path = path;
+  unit.pinned = false;
+  unit.retreating = true;
+  unit.retreatTarget = { x, y };
+  unit.retreatTimer = RETREAT_DISENGAGE_TIME;
+
+  return true;
+}
+
+function issueSelectedRetreatOrder(x, y) {
+  const pinnedUnits = selectedUnits.filter(
+    unit => unit.owner === RED && unit.pinned && unit.soldiers > 0
+  );
+
+  if (pinnedUnits.length === 0) {
+    return false;
+  }
+
+  if (!isFriendlyRetreatCell(x, y, RED)) {
+    message = "Right-click your own territory to retreat.";
+    return true;
+  }
+
+  let retreated = 0;
+
+  for (const unit of pinnedUnits) {
+    if (issueRetreatOrder(unit, x, y)) {
+      retreated++;
+    }
+  }
+
+  if (retreated > 0) {
+    message = `${retreated} unit${retreated === 1 ? "" : "s"} retreating.`;
+  } else {
+    message = "No retreat path found.";
+  }
+
+  return true;
 }

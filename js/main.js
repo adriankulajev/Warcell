@@ -152,6 +152,9 @@ function loop(now) {
 
   update(dt);
   draw();
+  if (typeof updateHUD === "function") {
+  updateHUD();
+}
 
   if (typeof syncPauseBorder === "function") {
     syncPauseBorder();

@@ -575,7 +575,6 @@ function drawSelectionBox() {
 function draw() {
   ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
 
-  drawTopBar();
   drawMap();
   drawSpawnMarkers();
   drawCities();
@@ -583,8 +582,7 @@ function draw() {
   drawSelectionBox();
   drawFormationLinePreview();
   drawFrontlineOrderPreview();
-  drawPanel();
-  drawLeaderboard();
+  drawSelectedUnitPaths();
 
   if (phase === "warmup") drawSpawnOverlay();
   if (buildMode) drawBuildCursor();
@@ -631,4 +629,78 @@ function drawFrontlineOrderPreview() {
   ctx.beginPath();
   ctx.arc(frontlineOrder.endX, frontlineOrder.endY, 5, 0, Math.PI * 2);
   ctx.fill();
+}
+
+function drawSelectedUnitPaths() {
+  if (phase !== "playing") return;
+  if (selectedUnits.length === 0) return;
+
+  ctx.save();
+
+  for (const unit of selectedUnits) {
+    if (!unit.path || unit.path.length === 0) continue;
+
+    ctx.strokeStyle = "rgba(255, 211, 77, 0.75)";
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([5, 4]);
+
+    ctx.beginPath();
+
+    ctx.moveTo(
+      offsetX + unit.x * cellSize + cellSize / 2,
+      offsetY + unit.y * cellSize + cellSize / 2
+    );
+
+    for (const point of unit.path) {
+      const px = point.x ?? point[0];
+      const py = point.y ?? point[1];
+
+      ctx.lineTo(
+        offsetX + px * cellSize + cellSize / 2,
+        offsetY + py * cellSize + cellSize / 2
+      );
+    }
+
+    ctx.stroke();
+  }
+
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+function drawSelectedUnitsPanel() {
+  if (phase !== "playing") return;
+  if (selectedUnits.length === 0) return;
+
+  const stats = getSelectedUnitStats();
+
+  if (stats.count === 0) return;
+
+  const x = 16;
+  const y = TOP_BAR + 16;
+  const w = 235;
+  const h = 118;
+
+  ctx.fillStyle = "rgba(5, 12, 20, 0.84)";
+  ctx.fillRect(x, y, w, h);
+
+  ctx.fillStyle = "white";
+  ctx.font = "bold 14px Arial";
+  ctx.fillText("Selected Units", x + 12, y + 20);
+
+  ctx.font = "12px Arial";
+
+  ctx.fillStyle = "#dce7f2";
+  ctx.fillText(`Units: ${stats.count}`, x + 12, y + 44);
+  ctx.fillText(`Soldiers: ${Math.round(stats.soldiers)}`, x + 12, y + 64);
+
+  ctx.fillStyle = "#9fb3c8";
+  ctx.fillText(`Idle: ${stats.idle}`, x + 12, y + 86);
+  ctx.fillText(`Moving: ${stats.moving}`, x + 82, y + 86);
+
+  ctx.fillStyle = stats.pinned > 0 ? "#ff7777" : "#9fb3c8";
+  ctx.fillText(`Pinned: ${stats.pinned}`, x + 12, y + 106);
+
+  ctx.fillStyle = stats.retreating > 0 ? "#ffd34d" : "#9fb3c8";
+  ctx.fillText(`Retreating: ${stats.retreating}`, x + 100, y + 106);
 }

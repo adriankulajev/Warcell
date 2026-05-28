@@ -1,5 +1,49 @@
 # Warcell Changelog
 
+## v0.0.3 — Unit Control & UI Overhaul — 2026-05-28
+
+Development update focused on RTS-style unit controls, frontline orders and a major interface redesign.
+
+### Added
+- Unit multi-selection system.
+- Selection box for selecting multiple units.
+- Group move orders with right mouse button.
+- Formation line orders with Shift + left mouse drag.
+- Frontline orders with Shift + right mouse button.
+- Unit split command with Q.
+- Automatic friendly unit merging when units overlap.
+- Unit status system: idle, moving, pinned and retreating.
+- Right-click retreat system for pinned units.
+- Selected units information panel.
+- Selected unit path preview.
+- HTML-based in-game HUD.
+- Top HUD bar with player info, money, bots alive, FPS, match time, speed and status.
+- HTML leaderboard panel.
+- Event feed panel.
+- Actions panel for common commands.
+- Redesigned main menu with left-aligned strategy-game layout.
+- Redesigned lobby with match configuration, player slots and map preview panels.
+- Redesigned pause and end screens using the new tactical UI style.
+- New WARCELL logo concept and in-menu logo mark.
+
+### Changed
+- Replaced most canvas-drawn HUD text with HTML/CSS interface elements.
+- Improved overall UI direction toward a darker tactical strategy-game style.
+- Main menu now uses a left-side command layout instead of a centered floating card.
+- Lobby now uses a wider multi-panel layout prepared for future map selection, player slots and multiplayer.
+- Bot and warmup settings remain as sliders, but are now styled as part of the new lobby UI.
+- Map preview now has a darker framed/shadowed tactical display style.
+- Unit control flow is now closer to classic RTS controls.
+- Speed control was integrated into the new HUD layout.
+- Canvas rendering is now focused more on gameplay visuals, while UI is handled by HTML/CSS.
+
+### Fixed
+- Fixed retreating units staying permanently in retreat state.
+- Fixed retreating units not moving correctly after retreat order.
+- Fixed retreating units being immediately pinned again during battle resolution.
+- Fixed UI errors caused by missing pause border and menu element references during the UI refactor.
+- Fixed duplicated/old canvas HUD elements conflicting with the new HTML HUD.
+
 ## v0.0.2 — Prototype Territory Systems - 2026-05-23
 
 Update focused on territory ownership, city fields, occupation logic and early-game expansion.

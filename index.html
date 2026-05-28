@@ -9,14 +9,38 @@
 </head>
 
 <body>
-  <div id="mainMenu" class="main-menu">
-    <div class="menu-card">
-      <h1>WARCELL</h1>
-      <p>Dynamic border strategy prototype</p>
+  <div id="mainMenu" class="menu-screen main-menu-screen">
+  <div class="menu-left">
+    <div class="menu-logo-row">
+      <div class="menu-logo-icon">W</div>
+      <div>
+        <h1>WARCELL</h1>
+        <p>Dynamic Border RTS</p>
+      </div>
+    </div>
+
+    <div class="menu-version">Private build • v0.0.3</div>
+
+    <div class="main-menu-buttons">
+      <button id="singleplayerButton" class="menu-primary-button">
+        <span>▶</span> Singleplayer
+      </button>
+
+      <button class="menu-secondary-button" disabled>
+        Multiplayer <span class="locked-label">Locked</span>
+      </button>
+
+      <button class="menu-secondary-button" disabled>
+        Settings <span class="locked-label">Locked</span>
+      </button>
+    </div>
+
+    <div class="profile-card">
+      <div class="profile-card-title">Player Profile</div>
 
       <div class="profile-row">
         <div class="profile-name">
-          <label for="playerNameInput">Player name</label>
+          <label for="playerNameInput">Name</label>
           <input id="playerNameInput" type="text" maxlength="18" value="Player" />
         </div>
 
@@ -25,90 +49,259 @@
           <input id="playerColorInput" type="color" value="#d63434" />
         </div>
       </div>
-
-      <button id="singleplayerButton">Singleplayer</button>
-      <button class="secondary-button" disabled>Multiplayer — later</button>
-      <button class="secondary-button" disabled>Settings — later</button>
     </div>
   </div>
 
-  <div id="lobbyMenu" class="main-menu hidden">
-    <div class="menu-card">
-      <h1>LOBBY</h1>
-      <p>Singleplayer setup</p>
+  <div class="menu-right-art">
+    <div class="menu-art-panel">
+      <div class="menu-art-title">Dynamic Frontlines</div>
+      <div class="menu-art-map">
+        <div class="fake-zone fake-red"></div>
+        <div class="fake-zone fake-blue"></div>
+        <div class="fake-zone fake-green"></div>
+        <div class="fake-frontline"></div>
+      </div>
+      <div class="menu-art-caption">
+        Spawn. Expand. Encircle. Collapse.
+      </div>
+    </div>
+  </div>
+</div>
 
-      <div class="lobby-settings">
-        <div class="menu-row compact-row">
-          <label for="botSlider">
-            Bots: <span id="botCountText">10</span>
-          </label>
-          <input id="botSlider" type="range" min="1" max="20" value="10" />
+<div id="lobbyMenu" class="menu-screen lobby-screen hidden">
+  <div class="lobby-header">
+    <button id="backToMainButton" class="menu-back-button">← Back</button>
+
+    <div>
+      <h1>GAME LOBBY</h1>
+      <p>Singleplayer setup</p>
+    </div>
+
+    <button id="startButton" class="menu-primary-button lobby-start-button">
+      Start Warmup
+    </button>
+  </div>
+
+  <div class="lobby-grid">
+    <section class="lobby-panel">
+      <div class="lobby-panel-title">Match Configuration</div>
+
+      <div class="setting-row setting-row-column">
+  <div class="setting-header">
+    <div>
+      <div class="setting-name">Bots</div>
+      <div class="setting-desc">AI players in the match</div>
+    </div>
+
+    <div class="setting-value">
+      <span id="botCountText">10</span>
+    </div>
+  </div>
+
+  <input id="botSlider" class="menu-slider" type="range" min="1" max="20" value="10" />
+</div>
+
+<div class="setting-row setting-row-column">
+  <div class="setting-header">
+    <div>
+      <div class="setting-name">Warmup Time</div>
+      <div class="setting-desc">Spawn selection phase</div>
+    </div>
+
+    <div class="setting-value">
+      <span id="warmupText">10</span>s
+    </div>
+  </div>
+
+  <input id="warmupSlider" class="menu-slider" type="range" min="5" max="30" value="10" />
+</div>
+
+      <div class="setting-row">
+        <div>
+          <div class="setting-name">Map</div>
+          <div class="setting-desc">Current prototype battlefield</div>
         </div>
 
-        <div class="menu-row compact-row">
-          <label for="warmupSlider">
-            Warmup: <span id="warmupText">10</span>s
-          </label>
-          <input id="warmupSlider" type="range" min="5" max="30" value="10" />
+        <div class="setting-value">Prototype Island</div>
+      </div>
+
+      <div class="setting-row">
+        <div>
+          <div class="setting-name">Ruleset</div>
+          <div class="setting-desc">Dynamic borders, city fields, occupation</div>
+        </div>
+
+        <div class="setting-value">Standard</div>
+      </div>
+    </section>
+
+    <section class="lobby-panel">
+      <div class="lobby-panel-title">Player Slots</div>
+
+      <div id="playerSlotsList" class="player-slots-list">
+        <!-- filled by JS -->
+      </div>
+    </section>
+
+    <section class="lobby-panel lobby-map-panel">
+      <div class="lobby-panel-title">Map Preview</div>
+
+      <div class="lobby-map-preview">
+        <div class="fake-zone fake-red"></div>
+        <div class="fake-zone fake-blue"></div>
+        <div class="fake-zone fake-green"></div>
+        <div class="fake-frontline"></div>
+      </div>
+
+      <div class="lobby-map-info">
+        <div>Recommended: 6–20 players</div>
+        <div>Mode: Free-for-all</div>
+        <div>Victory: eliminate all opponents</div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div id="endMenu" class="menu-screen dialog-screen hidden">
+  <div class="dialog-panel result-panel">
+    <h1 id="endTitle">MATCH ENDED</h1>
+    <p id="endMessage">Result message</p>
+
+    <div id="endStats" class="end-stats"></div>
+
+    <div class="dialog-buttons">
+      <button id="playAgainButton" class="menu-primary-button">Play Again</button>
+      <button id="backToLobbyButton" class="menu-secondary-button">Back to Lobby</button>
+      <button id="backToMainFromEndButton" class="menu-secondary-button">Main Menu</button>
+    </div>
+  </div>
+</div>
+
+<div id="pauseMenu" class="menu-screen dialog-screen hidden">
+  <div class="dialog-panel pause-panel">
+    <h1>PAUSED</h1>
+    <p>Match is paused</p>
+
+    <div class="dialog-buttons">
+      <button id="resumeButton" class="menu-primary-button">Resume</button>
+      <button id="restartMatchButton" class="menu-secondary-button">Restart Match</button>
+      <button id="pauseBackToLobbyButton" class="menu-secondary-button">Back to Lobby</button>
+      <button id="pauseBackToMainButton" class="menu-secondary-button">Main Menu</button>
+    </div>
+  </div>
+</div>
+
+  <canvas id="game"></canvas>
+  <div id="pauseBorder" class="pause-border"></div>
+  <div id="gameHud" class="game-hud hidden">
+    <div class="hud-top">
+      <div class="hud-brand">
+        <div class="hud-logo-mark">W</div>
+        <div>
+          <div class="hud-title">WARCELL</div>
+          <div class="hud-subtitle">Dynamic Border RTS</div>
         </div>
       </div>
 
-      <button id="startButton">Start Warmup</button>
-      <button id="backToMainButton" class="secondary-button">Back</button>
+      <div class="hud-resources">
+        <div class="hud-pill">
+          <span class="hud-dot" id="hudPlayerColor"></span>
+          <span id="hudPlayerName">Player</span>
+        </div>
+
+        <div class="hud-pill">
+          <span class="hud-label">Money</span>
+          <span id="hudMoney">0</span>
+        </div>
+
+        <div class="hud-pill">
+          <span class="hud-label">Bots</span>
+          <span id="hudBotsAlive">0/0</span>
+        </div>
+      </div>
+
+      <div class="hud-right">
+        <div class="hud-pill fps-pill">
+          <span class="hud-label">FPS</span>
+          <span id="hudFps">0</span>
+        </div>
+
+        <div class="hud-pill">
+          <span class="hud-label">Time</span>
+          <span id="hudTime">0:00</span>
+        </div>
+
+        <div id="speedControl" class="speed-control hidden">
+          <button id="speedButton">x1 ▾</button>
+
+          <div id="speedMenu" class="speed-menu hidden">
+            <button data-speed="0.5">x0.5 <span>1</span></button>
+            <button data-speed="1">x1 <span>2</span></button>
+            <button data-speed="2">x2 <span>3</span></button>
+            <button data-speed="4">x4 <span>4</span></button>
+          </div>
+        </div>
+
+        <div class="hud-pill status-pill" id="hudStatus">Running</div>
+      </div>
     </div>
-  </div>
 
-  <div id="endMenu" class="main-menu hidden">
-    <div class="menu-card">
-      <h1 id="endTitle">MATCH ENDED</h1>
-      <p id="endMessage">Result message</p>
+    <aside class="hud-card hud-left-panel">
+      <div class="hud-card-title">Selection</div>
+      <div id="hudSelectionContent" class="hud-card-content">
+        Nothing selected
+      </div>
+    </aside>
 
-      <div id="endStats" class="end-stats"></div>
+    <aside class="hud-card hud-leaderboard-panel">
+      <div class="hud-card-title">Leaderboard</div>
+      <div id="hudLeaderboardContent" class="hud-card-content"></div>
+    </aside>
 
-      <button id="playAgainButton">Play Again</button>
-      <button id="backToLobbyButton" class="secondary-button">Back to Lobby</button>
-      <button id="backToMainFromEndButton" class="secondary-button">Main Menu</button>
-    </div>
-  </div>
+    <aside class="hud-card hud-event-panel">
+      <div class="hud-card-title">Events</div>
+      <div id="hudEventFeed" class="hud-event-feed"></div>
+    </aside>
 
-  <div id="pauseMenu" class="main-menu hidden">
-    <div class="menu-card">
-      <h1>PAUSED</h1>
-      <p>Match is paused</p>
+    <section class="hud-card hud-actions-panel">
+      <div class="hud-card-title">Actions</div>
 
-      <button id="resumeButton">Resume</button>
-      <button id="restartMatchButton" class="secondary-button">Restart Match</button>
-      <button id="pauseBackToLobbyButton" class="secondary-button">Back to Lobby</button>
-      <button id="pauseBackToMainButton" class="secondary-button">Main Menu</button>
-    </div>
-  </div>
+      <div class="hud-action-grid">
+        <button id="hudBuyTroopsButton">Buy Troops <span>T</span></button>
+        <button id="hudBuildCityButton">Build City <span>B</span></button>
+        <button id="hudSplitButton">Split <span>Q</span></button>
+        <button id="hudRetreatButton">Retreat <span>RMB</span></button>
+      </div>
+    </section>
 
-  <canvas id="game"></canvas>
+    <section class="hud-card hud-controls-panel">
+      <div class="hud-card-title">Controls</div>
 
-  <div id="pauseBorder" class="pause-border"></div>
+      <div class="hud-controls-grid">
+        <span>Drag</span><b>Box select</b>
+        <span>Shift + Click</span><b>Add unit</b>
+        <span>Shift + Drag</span><b>Formation line</b>
+        <span>RMB</span><b>Move / Retreat</b>
+        <span>Shift + RMB</span><b>Frontline</b>
+        <span>Q</span><b>Split</b>
+      </div>
 
-  <div id="speedControl" class="speed-control hidden">
-    <button id="speedButton">x1 ▾</button>
-
-    <div id="speedMenu" class="speed-menu hidden">
-      <button data-speed="0.5">x0.5 <span>1</span></button>
-      <button data-speed="1">x1 <span>2</span></button>
-      <button data-speed="2">x2 <span>3</span></button>
-      <button data-speed="4">x4 <span>4</span></button>
-    </div>
+      <div id="hudMessage" class="hud-message">Ready.</div>
+    </section>
   </div>
 
   <script src="js/config.js"></script>
-<script src="js/state.js"></script>
-<script src="js/map.js"></script>
-<script src="js/reset.js"></script>
-<script src="js/cities.js"></script>
-<script src="js/units.js"></script>
-<script src="js/elimination.js"></script>
-<script src="js/ai.js"></script>
-<script src="js/render.js"></script>
-<script src="js/input.js"></script>
-<script src="js/main.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/reset.js"></script>
+  <script src="js/cities.js"></script>
+  <script src="js/units.js"></script>
+  <script src="js/elimination.js"></script>
+  <script src="js/ai.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/main.js"></script>
 </body>
 
 </html>
